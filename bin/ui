@@ -55,7 +55,9 @@ cmd_up() {
   say "loki       http://localhost:3100   (API, no UI)"
   say "collector  localhost:4317 (OTLP gRPC), localhost:4318 (OTLP HTTP)"
   printf '\n'
-  say "dashboards: Grafana -> Dojo folder (cluster overview, pipeline components)"
+  say "dashboards: Grafana -> Dojo folder -- cluster overview, pipeline components,"
+  say "            and APM (spans & traces: rate and p95 per service, errors,"
+  say "            service graph, recent and error traces)"
   say "the in-cluster Ingress hosts (grafana.dojo.local, tempo.dojo.local) are"
   say "what a real cluster would serve; here the live UIs are the localhost ports."
   printf '\n'

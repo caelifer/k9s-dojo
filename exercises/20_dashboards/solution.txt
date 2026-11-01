@@ -2,7 +2,7 @@
 
 grafana_host: grafana.dojo.local
 tempo_host: tempo.dojo.local
-prebuilt_dashboards: 2
+prebuilt_dashboards: 3
 sidecar_container: dashboard-sidecar
 dashboards_path: /var/lib/grafana/dashboards
 my_dashboard_uid: dojo-pipeline-slo

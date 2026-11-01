@@ -8,6 +8,7 @@ collector_service: collector
 ksm_port: 8080
 node_exporter_port: 9100
 node_exporter_workload: node-exporter
+generator_services: 3
 
 # Finished manifests:
 #   exercises/19_generators/solution/50-generators.yaml        (synthetic load)

@@ -15,7 +15,7 @@ fi
 # 2. answers read off the TUI
 expect grafana_host grafana.dojo.local "the Grafana ingress host"
 expect tempo_host tempo.dojo.local "the Tempo ingress host"
-expect prebuilt_dashboards 2 "cluster overview + pipeline components"
+expect prebuilt_dashboards 3 "cluster overview, pipeline components, apm"
 expect sidecar_container dashboard-sidecar "the k8s-sidecar container"
 expect dashboards_path /var/lib/grafana/dashboards "the shared emptyDir"
 expect my_dashboard_uid dojo-pipeline-slo "the uid you chose"
@@ -40,8 +40,8 @@ kcheck "the sidecar watches for the grafana_dashboard label" \
 kcheck "the file provider points at the dashboards directory" \
   bash -c "kubectl --context $ctx -n observability get cm grafana-dashboard-provider \
     -o jsonpath='{.data.provider\.yaml}' | grep -q '/var/lib/grafana/dashboards'"
-kcheck "two prebuilt dashboards are labelled for the sidecar" \
-  bash -c "[[ \$(kubectl --context $ctx -n observability get cm -l grafana_dashboard=1 --no-headers | wc -l) == 2 ]]"
+kcheck "three prebuilt dashboards are labelled for the sidecar" \
+  bash -c "[[ \$(kubectl --context $ctx -n observability get cm -l grafana_dashboard=1 --no-headers | wc -l) == 3 ]]"
 
 prebuilt_k8s=$(kubectl --context "$ctx" -n observability get cm grafana-dashboard-k8s \
   -o jsonpath='{.data.k8s-cluster-overview\.json}' 2>/dev/null)

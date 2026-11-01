@@ -22,6 +22,7 @@ expect collector_service collector "the headless collector Service"
 expect ksm_port 8080 "kube-state-metrics http-metrics"
 expect node_exporter_port 9100 "node-exporter metrics"
 expect node_exporter_workload node-exporter "the host-metrics DaemonSet"
+expect generator_services 3 "frontend, checkout-api and worker"
 
 # 3. the application generators
 kcheck "synthetic-load runs 2 replicas" \
@@ -38,6 +39,12 @@ kcheck "every container targets the collector gRPC endpoint" \
 kcheck "every container exports insecurely (in-cluster plaintext)" \
   bash -c "kubectl --context $ctx -n pipeline get deploy synthetic-load \
     -o jsonpath='{.spec.template.spec.containers[*].args}' | grep -o -- --otlp-insecure | wc -l | grep -qx 3"
+kcheck "every container declares a service name" \
+  bash -c "kubectl --context $ctx -n pipeline get deploy synthetic-load \
+    -o jsonpath='{.spec.template.spec.containers[*].args}' | grep -Eo -- '--service|service.name=' | wc -l | grep -qx 3"
+kcheck "the three service names are distinct" \
+  bash -c "a=\$(kubectl --context $ctx -n pipeline get deploy synthetic-load -o yaml);
+    for n in frontend checkout-api worker; do grep -q \"\$n\" <<<\"\$a\" || exit 1; done"
 kcheck "each container runs its own subcommand" \
   bash -c "c=\$(kubectl --context $ctx -n pipeline get deploy synthetic-load \
     -o jsonpath='{.spec.template.spec.containers[*].args}');

@@ -97,23 +97,33 @@ services:
       - "9100:9100"
     restart: unless-stopped
 
+  # Every generator names its service: an OTLP span without service.name shows
+  # up as "unknown service" in Grafana's APM views, and that is impossible to
+  # debug from the UI.
   telemetrygen-traces:
     image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.115.0
-    command: ["traces", "--otlp-endpoint", "otel-collector:4317", "--otlp-insecure", "--rate", "20", "--duration", "1h"]
+    command: ["traces", "--otlp-endpoint", "otel-collector:4317", "--otlp-insecure", "--rate", "20", "--duration", "1h", "--service", "frontend"]
+    depends_on:
+      - otel-collector
+    restart: unless-stopped
+
+  telemetrygen-errors:
+    image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.115.0
+    command: ["traces", "--otlp-endpoint", "otel-collector:4317", "--otlp-insecure", "--rate", "2", "--duration", "1h", "--service", "checkout-api", "--status-code", "Error"]
     depends_on:
       - otel-collector
     restart: unless-stopped
 
   telemetrygen-metrics:
     image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.115.0
-    command: ["metrics", "--otlp-endpoint", "otel-collector:4317", "--otlp-insecure", "--rate", "20", "--duration", "1h"]
+    command: ["metrics", "--otlp-endpoint", "otel-collector:4317", "--otlp-insecure", "--rate", "20", "--duration", "1h", "--otlp-attributes", "service.name=payments-ledger"]
     depends_on:
       - otel-collector
     restart: unless-stopped
 
   telemetrygen-logs:
     image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.115.0
-    command: ["logs", "--otlp-endpoint", "otel-collector:4317", "--otlp-insecure", "--rate", "20", "--duration", "1h"]
+    command: ["logs", "--otlp-endpoint", "otel-collector:4317", "--otlp-insecure", "--rate", "20", "--duration", "1h", "--otlp-attributes", "service.name=worker"]
     depends_on:
       - otel-collector
     restart: unless-stopped

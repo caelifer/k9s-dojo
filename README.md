@@ -163,6 +163,7 @@ trace search — and ships two prebuilt dashboards as labelled ConfigMaps that a
 |---|---|
 | Kubernetes / Cluster overview | nodes ready, pods by phase, node CPU and memory, restarts, logs, traces |
 | Dojo / Pipeline components | accepted vs sent spans, exporter queue, drops, per-replica throughput, backend health |
+| Dojo / APM (spans & traces) | spans/s per service, p95 latency, error ratio, service-graph edges, recent and error traces |
 
 You add the third one: a service-level dashboard for the pipeline itself, written
 as a labelled ConfigMap and checked by parsing the JSON the cluster holds.
@@ -200,10 +201,18 @@ dashboards show live data while you work:
 
 | UI | URL | Notes |
 |---|---|---|
-| Grafana | `http://localhost:3000` | dashboards in the **Dojo** folder, Explore, anonymous admin |
+| Grafana | `http://localhost:3000` | dashboards in the **Dojo** folder, Explore, APM view, anonymous admin |
 | Tempo | `http://localhost:3200` | trace search / TraceQL |
 | Mimir, Loki | `:9009`, `:3100` | APIs only, no UI |
 | OTLP in | `localhost:4317`, `localhost:4318` | send your own spans with `telemetrygen` or an app |
+
+Every generating component declares a `service.name` — `frontend` and
+`checkout-api` for traces (one of them deliberately erroring), `worker` for logs,
+`payments-ledger` for metrics, `pipeline-collector` and `node-agent` in the cluster
+manifests — and the collector inserts a fallback for anything that arrives
+without one, so no APM view shows "unknown service". Tempo's metrics-generator
+turns those spans into `traces_spanmetrics_*` and `traces_service_graph_*`
+series, which is what the APM dashboard queries.
 
 Data comes from the same sources the exercises describe: `kube-state-metrics`
 talks to the dojo API server (so `kube_*` series describe the real seed objects),

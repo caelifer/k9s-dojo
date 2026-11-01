@@ -87,6 +87,9 @@ spec:
         - name: otel-collector
           image: otel/opentelemetry-collector-contrib:0.115.1
           args: ["--config=/etc/otel/collector.yaml"]
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: pipeline-collector
           ports:
             - name: otlp-grpc
               containerPort: 4317

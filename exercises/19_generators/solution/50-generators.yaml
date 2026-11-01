@@ -28,6 +28,8 @@ spec:
             - "5"
             - --duration
             - 1h
+            - --service
+            - frontend
           resources:
             requests:
               cpu: 10m
@@ -46,6 +48,8 @@ spec:
             - "5"
             - --duration
             - 1h
+            - --otlp-attributes
+            - service.name=checkout-api
           resources:
             requests:
               cpu: 10m
@@ -64,6 +68,8 @@ spec:
             - "5"
             - --duration
             - 1h
+            - --otlp-attributes
+            - service.name=worker
           resources:
             requests:
               cpu: 10m
@@ -97,6 +103,8 @@ spec:
                 - --otlp-insecure
                 - --traces
                 - "5"
+                - --service
+                - telemetry-smoke
               resources:
                 requests:
                   cpu: 10m

@@ -29,3 +29,11 @@ configMapGenerator:
       disableNameSuffixHash: true
     files:
       - dashboards/pipeline-components.json
+  - name: grafana-dashboard-apm
+    namespace: observability
+    options:
+      labels:
+        grafana_dashboard: "1"
+      disableNameSuffixHash: true
+    files:
+      - dashboards/apm-traces.json

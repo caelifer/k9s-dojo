@@ -37,6 +37,7 @@ without restarting anything. The cluster ships two prebuilt dashboards this way:
 |---|---|---|
 | Kubernetes / Cluster overview | `dojo-k8s-overview` | nodes ready, pods by phase, node CPU/memory, restarts, logs, traces |
 | Dojo / Pipeline components | `dojo-pipeline-components` | accepted vs sent spans, exporter queue, drops, per-replica throughput, backend health |
+| Dojo / APM (spans & traces) | `dojo-apm` | spans/s per service, p95 latency, error ratio, service graph edges, recent and error traces |
 
 ## Your task
 
@@ -72,7 +73,7 @@ Answer from the TUI:
 1. Which host exposes Grafana?
 2. Which host exposes Tempo's trace explorer?
 3. How many dashboards ship prebuilt (ConfigMaps labelled `grafana_dashboard=1`
-   in `observability`)?
+   in `observability`)? (three: cluster overview, pipeline components, APM)
 4. What is the sidecar container called?
 5. Which path holds the rendered dashboard JSON inside the Grafana pod?
 6. What uid did you give your dashboard?

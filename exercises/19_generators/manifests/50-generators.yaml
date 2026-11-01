@@ -12,9 +12,14 @@
 #   - image ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.115.0
 #   - each container runs the matching subcommand (traces | metrics | logs) with
 #     --otlp-endpoint collector.pipeline.svc.cluster.local:4317,
-#     --otlp-insecure, --rate 5 and --duration 1h
+#     --otlp-insecure, --rate 5 and --duration 1h, plus a distinct service name
+#     per container: `--service frontend` on the traces container and
+#     `--otlp-attributes service.name=<name>` on metrics (checkout-api) and logs
+#     (worker). telemetrygen only accepts --service for traces; without a
+#     service name Grafana's APM views show "unknown service".
 #   - CronJob `telemetry-smoke`, schedule "*/10 * * * *", same image, one
-#     container named smoke running `traces --traces 5` against the same endpoint
+#     container named smoke running `traces --traces 5` against the same endpoint,
+#     with --service telemetry-smoke
 apiVersion: apps/v1
 kind: Deployment
 metadata:

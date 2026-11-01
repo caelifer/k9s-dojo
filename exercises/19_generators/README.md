@@ -24,11 +24,16 @@ node-exporter:9100 ---------- +----+ (prometheus receiver, metrics pipeline)
 The generator is OpenTelemetry's own `telemetrygen`. It takes one signal per
 invocation, so a pod that produces all three signals has three containers:
 
-| Container | Subcommand | Goes to |
-|---|---|---|
-| `traces` | `telemetrygen traces` | collector gRPC 4317 |
-| `metrics` | `telemetrygen metrics` | collector gRPC 4317 |
-| `logs` | `telemetrygen logs` | collector gRPC 4317 |
+| Container | Subcommand | Service name | Goes to |
+|---|---|---|---|
+| `traces` | `telemetrygen traces` | `--service frontend` | collector gRPC 4317 |
+| `metrics` | `telemetrygen metrics` | `--otlp-attributes service.name=checkout-api` | collector gRPC 4317 |
+| `logs` | `telemetrygen logs` | `--otlp-attributes service.name=worker` | collector gRPC 4317 |
+
+A span without a `service.name` resource attribute shows up as "unknown service"
+in every APM view, so each container names itself. Note the flag differs:
+`--service` only exists on the `traces` subcommand, the other two take
+`--otlp-attributes service.name=<name>`.
 
 Fill in `manifests/50-generators.yaml`:
 
@@ -36,9 +41,9 @@ Fill in `manifests/50-generators.yaml`:
   `logs`, image
   `ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.115.0`,
   each with `--otlp-endpoint collector.pipeline.svc.cluster.local:4317`,
-  `--otlp-insecure`, `--rate 5`, `--duration 1h`.
+  `--otlp-insecure`, `--rate 5`, `--duration 1h` and its own service name.
 - CronJob `telemetry-smoke`, schedule `*/10 * * * *`, one container running
-  `traces --traces 5` against the same endpoint.
+  `traces --traces 5 --service telemetry-smoke` against the same endpoint.
 
 ## Part 2 — collect the cluster's own telemetry
 
@@ -105,5 +110,6 @@ thing being graded.
 6. Which port does kube-state-metrics serve on?
 7. Which port does node-exporter serve on?
 8. Which DaemonSet collects host metrics?
+9. How many distinct service names do the three generator containers report?
 
 Fill in `answer.txt`, then `make check`.

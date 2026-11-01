@@ -26,6 +26,13 @@ receivers:
             - targets: ["otel-collector:8888"]
 
 processors:
+  # `insert` only writes when the attribute is absent, so producers that name
+  # their service keep it; anything else stops showing as "unknown service".
+  attributes/service:
+    actions:
+      - key: service.name
+        action: insert
+        value: unattributed-service
   memory_limiter:
     check_interval: 1s
     limit_mib: 512
@@ -52,13 +59,13 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
+      processors: [attributes/service, memory_limiter, batch]
       exporters: [otlp/tempo]
     metrics:
       receivers: [otlp, prometheus]
-      processors: [memory_limiter, batch]
+      processors: [attributes/service, memory_limiter, batch]
       exporters: [prometheusremotewrite/mimir]
     logs:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
+      processors: [attributes/service, memory_limiter, batch]
       exporters: [otlphttp/loki]
