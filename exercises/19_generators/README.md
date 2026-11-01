@@ -27,13 +27,13 @@ invocation, so a pod that produces all three signals has three containers:
 | Container | Subcommand | Service name | Goes to |
 |---|---|---|---|
 | `traces` | `telemetrygen traces` | `--service frontend` | collector gRPC 4317 |
-| `metrics` | `telemetrygen metrics` | `--otlp-attributes service.name=checkout-api` | collector gRPC 4317 |
-| `logs` | `telemetrygen logs` | `--otlp-attributes service.name=worker` | collector gRPC 4317 |
+| `metrics` | `telemetrygen metrics` | `--otlp-attributes service.name="checkout-api"` | collector gRPC 4317 |
+| `logs` | `telemetrygen logs` | `--otlp-attributes service.name="worker"` | collector gRPC 4317 |
 
 A span without a `service.name` resource attribute shows up as "unknown service"
 in every APM view, so each container names itself. Note the flag differs:
 `--service` only exists on the `traces` subcommand, the other two take
-`--otlp-attributes service.name=<name>`.
+`--otlp-attributes service.name="<name>"` (the value must be quoted).
 
 Fill in `manifests/50-generators.yaml`:
 

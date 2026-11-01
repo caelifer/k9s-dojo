@@ -31,6 +31,8 @@ fi
 if [[ $WITH_IMAGES == 1 ]]; then
   say "removing UI images"
   podman rmi -f \
+    localhost/k9s-dojo-loader:latest \
+    docker.io/python:3.12-slim \
     docker.io/grafana/loki:3.2.1 \
     docker.io/grafana/tempo:2.6.1 \
     docker.io/grafana/mimir:2.14.0 \

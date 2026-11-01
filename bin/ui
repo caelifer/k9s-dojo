@@ -54,6 +54,7 @@ cmd_up() {
   say "mimir      http://localhost:9009   (prometheus API, no UI)"
   say "loki       http://localhost:3100   (API, no UI)"
   say "collector  localhost:4317 (OTLP gRPC), localhost:4318 (OTLP HTTP)"
+  say "loader     dojo-loader, ~1 cycle/s against every backend, instrumented"
   printf '\n'
   say "dashboards: Grafana -> Dojo folder -- cluster overview, pipeline components,"
   say "            and APM (spans & traces: rate and p95 per service, errors,"

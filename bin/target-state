@@ -49,6 +49,12 @@ cmd_apply() {
   apply_reference 19_generators
   apply_reference 20_dashboards
 
+  # the dummy loader: exercises the payload and reports its own spans, metrics
+  # and logs, so the target state is never idle
+  kubectl --context "$CTX" apply -f "$ROOT/target/loader.yaml" >/dev/null ||
+    die "could not apply the dummy loader"
+  say "applied target/loader.yaml (dojo-loader)"
+
   kubectl --context "$CTX" -n pipeline wait --for=condition=Ready pod \
     --all --timeout=90s >/dev/null 2>&1 || say "warning: not every pod is Ready yet"
 
@@ -59,13 +65,15 @@ cmd_apply() {
   printf '\n'
   say "inspect it:"
   say "  make tui                    k9s on $CTX"
-  say "  :pods -n pipeline           collectors, generators, kube-state-metrics"
+  say "  :pods -n pipeline           dojo-loader, collectors, generators, kube-state-metrics"
   say "  :sts -n observability       loki, tempo, mimir"
   say "  :cm -n pipeline             collector config you are meant to write"
   say "  :cm -n observability        prebuilt dashboards"
   say "  :ing -n observability       grafana.dojo.local, tempo.dojo.local"
   printf '\n'
   say "live UIs: make ui, then http://localhost:3000 and http://localhost:3200"
+  say "the loader runs here as dojo-loader; make ui runs the same program"
+  say "instrumented, so its spans, metrics and logs land in the stack"
   say "remove it: make target-state-clear"
   printf '\n'
 }

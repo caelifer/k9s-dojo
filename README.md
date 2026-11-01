@@ -214,6 +214,19 @@ without one, so no APM view shows "unknown service". Tempo's metrics-generator
 turns those spans into `traces_spanmetrics_*` and `traces_service_graph_*`
 series, which is what the APM dashboard queries.
 
+A dummy loader (`ui/loader/`) does real HTTP work against every backend and is
+instrumented with the OpenTelemetry SDK, so it appears in the stack it exercises:
+`dojo-loader` spans become spanmetrics in Tempo, `loader_*` metrics land in
+Mimir, and its log records land in Loki. It is a demonstration loader, not a
+benchmark — one cycle every three seconds — and it deliberately injects the
+problems the last exercise asks you to find:
+
+| Injected | How it shows up |
+|---|---|
+| `mimir_bad_query`, `tempo_unknown_route`, `grafana_missing_dashboard`, `loki_bad_push` | failed spans (400/404), error counter, error ratio panel |
+| `slow_backend` with `loader.simulated_delay_seconds` | p95 latency spike, `loader_slo_breaches_total` |
+| healthy cycles | the baseline rate, latency and error floor |
+
 Data comes from the same sources the exercises describe: `kube-state-metrics`
 talks to the dojo API server (so `kube_*` series describe the real seed objects),
 `node-exporter` reads the host, the collector scrapes itself for `otelcol_*`

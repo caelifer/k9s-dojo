@@ -26,13 +26,15 @@ receivers:
             - targets: ["otel-collector:8888"]
 
 processors:
-  # `insert` only writes when the attribute is absent, so producers that name
-  # their service keep it; anything else stops showing as "unknown service".
-  attributes/service:
-    actions:
+  # `insert` only writes when the resource attribute is absent, so producers that
+  # name their service keep it; anything else stops showing as "unknown service".
+  # This must be the resource processor, not attributes: the latter would attach
+  # service.name to every datapoint and log record as well.
+  resource/service:
+    attributes:
       - key: service.name
-        action: insert
         value: unattributed-service
+        action: insert
   memory_limiter:
     check_interval: 1s
     limit_mib: 512
@@ -49,6 +51,10 @@ exporters:
     endpoint: http://loki:3100/otlp
   prometheusremotewrite/mimir:
     endpoint: http://mimir:9009/api/v1/push
+    # turn resource attributes into Prometheus labels, so a metric carries the
+    # service that produced it (service_name, service_version, instance id)
+    resource_to_telemetry_conversion:
+      enabled: true
 
 service:
   telemetry:
@@ -59,13 +65,15 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [attributes/service, memory_limiter, batch]
+      processors: [resource/service, memory_limiter, batch]
       exporters: [otlp/tempo]
     metrics:
+      # no service fallback here: scraped targets are identified by job, and
+      # naming them "unattributed-service" would only add noise
       receivers: [otlp, prometheus]
-      processors: [attributes/service, memory_limiter, batch]
+      processors: [memory_limiter, batch]
       exporters: [prometheusremotewrite/mimir]
     logs:
       receivers: [otlp]
-      processors: [attributes/service, memory_limiter, batch]
+      processors: [resource/service, memory_limiter, batch]
       exporters: [otlphttp/loki]

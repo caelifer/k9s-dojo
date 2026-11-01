@@ -55,6 +55,30 @@ services:
       - mimir
     restart: unless-stopped
 
+  # The dummy loader: real HTTP work against the stack, fully instrumented with
+  # the OTel SDK (spans, metrics, logs) so it shows up in its own dashboards.
+  loader:
+    build:
+      context: ./loader
+    image: localhost/k9s-dojo-loader:latest
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      MIMIR_URL: http://mimir:9009/prometheus
+      LOKI_URL: http://loki:3100
+      TEMPO_URL: http://tempo:3200
+      GRAFANA_URL: http://grafana:3000
+      LOADER_INTERVAL: "3.0"
+      ERROR_RATE: "0.05"
+      SLOW_RATE: "0.05"
+      SLOW_DELAY: "1.2"
+    depends_on:
+      - otel-collector
+      - mimir
+      - loki
+      - tempo
+      - grafana
+    restart: unless-stopped
+
   grafana:
     image: docker.io/grafana/grafana:11.3.0
     ports:
@@ -102,28 +126,28 @@ services:
   # debug from the UI.
   telemetrygen-traces:
     image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.115.0
-    command: ["traces", "--otlp-endpoint", "otel-collector:4317", "--otlp-insecure", "--rate", "20", "--duration", "1h", "--service", "frontend"]
+    command: ["traces", "--otlp-endpoint", "otel-collector:4317", "--otlp-insecure", "--rate", "2", "--duration", "1h", "--service", "frontend"]
     depends_on:
       - otel-collector
     restart: unless-stopped
 
   telemetrygen-errors:
     image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.115.0
-    command: ["traces", "--otlp-endpoint", "otel-collector:4317", "--otlp-insecure", "--rate", "2", "--duration", "1h", "--service", "checkout-api", "--status-code", "Error"]
+    command: ["traces", "--otlp-endpoint", "otel-collector:4317", "--otlp-insecure", "--rate", "0.2", "--duration", "1h", "--service", "checkout-api", "--status-code", "Error"]
     depends_on:
       - otel-collector
     restart: unless-stopped
 
   telemetrygen-metrics:
     image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.115.0
-    command: ["metrics", "--otlp-endpoint", "otel-collector:4317", "--otlp-insecure", "--rate", "20", "--duration", "1h", "--otlp-attributes", "service.name=payments-ledger"]
+    command: ["metrics", "--otlp-endpoint", "otel-collector:4317", "--otlp-insecure", "--rate", "2", "--duration", "1h", "--otlp-attributes", 'service.name="payments-ledger"']
     depends_on:
       - otel-collector
     restart: unless-stopped
 
   telemetrygen-logs:
     image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.115.0
-    command: ["logs", "--otlp-endpoint", "otel-collector:4317", "--otlp-insecure", "--rate", "20", "--duration", "1h", "--otlp-attributes", "service.name=worker"]
+    command: ["logs", "--otlp-endpoint", "otel-collector:4317", "--otlp-insecure", "--rate", "2", "--duration", "1h", "--otlp-attributes", 'service.name="worker"']
     depends_on:
       - otel-collector
     restart: unless-stopped

@@ -1,0 +1,58 @@
+# The dummy loader, as it would run inside the cluster.
+#
+# `make target-state` applies this after the reference manifests, so the target
+# state includes something that continuously exercises the payload and reports
+# on itself: spans to the collector (which become spanmetrics in Tempo), metrics
+# to Mimir, logs to Loki. The same program runs in the live stack through
+# ui/compose.yaml; there it reaches the same services by their compose names.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dojo-loader
+  namespace: pipeline
+  labels:
+    app: dojo-loader
+    tier: generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dojo-loader
+  template:
+    metadata:
+      labels:
+        app: dojo-loader
+        tier: generator
+    spec:
+      containers:
+        - name: loader
+          image: localhost/k9s-dojo-loader:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://collector.pipeline.svc.cluster.local:4318
+            - name: MIMIR_URL
+              value: http://mimir.observability.svc.cluster.local:9009/prometheus
+            - name: LOKI_URL
+              value: http://loki.observability.svc.cluster.local:3100
+            - name: TEMPO_URL
+              value: http://tempo.observability.svc.cluster.local:3200
+            - name: GRAFANA_URL
+              value: http://grafana.observability.svc.cluster.local:3000
+            - name: OTEL_SERVICE_NAME
+              value: dojo-loader
+            - name: LOADER_INTERVAL
+              value: "3.0"
+            - name: ERROR_RATE
+              value: "0.05"
+            - name: SLOW_RATE
+              value: "0.05"
+            - name: SLOW_DELAY
+              value: "1.2"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 192Mi
