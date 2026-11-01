@@ -1,0 +1,20 @@
+# Exercise 20 -- UIs and dashboards
+# Fill in every value after the colon. Leave the key names alone.
+
+# Host that exposes Grafana
+grafana_host:
+
+# Host that exposes Tempo's trace explorer
+tempo_host:
+
+# Number of prebuilt dashboards in the observability namespace
+prebuilt_dashboards:
+
+# Sidecar container name in the Grafana pod
+sidecar_container:
+
+# Path holding rendered dashboard JSON inside the Grafana pod
+dashboards_path:
+
+# UID you gave your dashboard
+my_dashboard_uid:

@@ -11,3 +11,4 @@ resources:
   - 70-statefulset.yaml
   - 80-ingress.yaml
   - 85-lgtm.yaml
+  - 86-dashboards.yaml

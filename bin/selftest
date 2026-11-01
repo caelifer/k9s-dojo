@@ -22,6 +22,12 @@ cleanup() {
   if [[ -d $backup/manifests ]]; then
     cp "$backup"/manifests/*.yaml "$ROOT/exercises/17_pipeline/manifests/" 2>/dev/null
   fi
+  if [[ -d $backup/dashboards ]]; then
+    for f in "$ROOT"/exercises/20_dashboards/manifests/*.yaml; do
+      [[ -f $backup/dashboards/$(basename "$f") ]] || rm -f "$f"
+    done
+    cp "$backup"/dashboards/*.yaml "$ROOT/exercises/20_dashboards/manifests/" 2>/dev/null
+  fi
   if [[ -d $backup/generators ]]; then
     local f
     for f in "$ROOT"/exercises/19_generators/manifests/*.yaml; do
@@ -58,7 +64,12 @@ mkdir -p "$backup/generators"
 cp "$ROOT"/exercises/19_generators/manifests/*.yaml "$backup/generators/"
 cp "$ROOT"/exercises/19_generators/solution/*.yaml "$ROOT/exercises/19_generators/manifests/"
 kubectl --context "$CTX_DEV" apply -f "$ROOT/exercises/17_pipeline/manifests/" >/dev/null 2>&1
+# exercise 20 adds the dashboard ConfigMap in its own directory
+mkdir -p "$backup/dashboards"
+cp "$ROOT"/exercises/20_dashboards/manifests/*.yaml "$backup/dashboards/"
+cp "$ROOT"/exercises/20_dashboards/solution/*.yaml "$ROOT/exercises/20_dashboards/manifests/"
 kubectl --context "$CTX_DEV" apply -f "$ROOT/exercises/19_generators/manifests/" >/dev/null 2>&1
+kubectl --context "$CTX_DEV" apply -f "$ROOT/exercises/20_dashboards/manifests/" >/dev/null 2>&1
 
 # 10-12 are graded on live state, so act like a learner
 kubectl --context "$CTX_PROD" -n shop scale deploy frontend --replicas=7 >/dev/null 2>&1

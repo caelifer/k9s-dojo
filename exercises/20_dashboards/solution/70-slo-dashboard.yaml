@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-pipeline-slo
+  namespace: pipeline
+  labels:
+    grafana_dashboard: "1"
+data:
+  pipeline-slo.json: |
+    {
+      "uid": "dojo-pipeline-slo",
+      "title": "Dojo / Pipeline SLO",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "tags": ["dojo", "slo"],
+      "time": {"from": "now-6h", "to": "now"},
+      "templating": {
+        "list": [
+          {
+            "name": "pod",
+            "label": "Collector",
+            "type": "query",
+            "datasource": {"type": "prometheus", "uid": "mimir"},
+            "query": "label_values(otelcol_exporter_queue_size, pod)",
+            "includeAll": true,
+            "multi": true,
+            "current": {"text": "All", "value": "$__all"}
+          }
+        ]
+      },
+      "panels": [
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "Exporter queue depth",
+          "datasource": {"type": "prometheus", "uid": "mimir"},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "otelcol_exporter_queue_size{pod=~\"$pod\"}",
+              "legendFormat": "{{pod}} / {{exporter}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "timeseries",
+          "title": "Export failures vs accepted",
+          "datasource": {"type": "prometheus", "uid": "mimir"},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(rate(otelcol_exporter_send_failed_spans{pod=~\"$pod\"}[5m]))",
+              "legendFormat": "failed"
+            },
+            {
+              "refId": "B",
+              "expr": "sum(rate(otelcol_receiver_accepted_spans{pod=~\"$pod\"}[5m]))",
+              "legendFormat": "accepted"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Generators reporting",
+          "datasource": {"type": "prometheus", "uid": "mimir"},
+          "gridPos": {"h": 8, "w": 6, "x": 0, "y": 8},
+          "targets": [
+            {"refId": "A", "expr": "count(count by (pod) (rate(otelcol_receiver_accepted_spans[5m])))"}
+          ]
+        },
+        {
+          "id": 4,
+          "type": "logs",
+          "title": "Pipeline logs",
+          "datasource": {"type": "loki", "uid": "loki"},
+          "gridPos": {"h": 8, "w": 18, "x": 6, "y": 8},
+          "targets": [{"refId": "A", "expr": "{namespace=\"pipeline\"} |~ \"(?i)error|drop\""}]
+        }
+      ]
+    }

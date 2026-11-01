@@ -1,6 +1,6 @@
 # k9s-dojo
 
-Nineteen exercises for the [k9s](https://k9scli.io) terminal UI, built like
+Twenty exercises for the [k9s](https://k9scli.io) terminal UI, built like
 [ziglings](https://codeberg.org/ziglings/exercises): numbered exercises you edit,
 a checker that refuses to pass until the work is actually done, and a throwaway
 cluster that `make setup` builds for you.
@@ -52,7 +52,7 @@ make list      # progress through all sixteen
 | `shop` workloads | frontend ×3, frontend-canary, redis, checkout-api ×2, worker, batch-renderer | frontend ×5, redis, checkout-api ×2, worker, batch-renderer |
 | Stateful workload | `payments/storefront-db` StatefulSet, 2 replicas, one bound PVC each | same |
 | Edge | `shop/shop-edge` Ingress, host `shop.dojo.local`, TLS | same |
-| Observability | `observability` namespace: Loki, Tempo, Mimir StatefulSets, Grafana + Grafana Ingress | same |
+| Observability | `observability` namespace: Loki, Tempo, Mimir StatefulSets, Grafana (2 containers) with two prebuilt dashboards, `grafana.dojo.local` and `tempo.dojo.local` Ingresses | same |
 | Broken on purpose | checkout-api (ImagePullBackOff), worker (CrashLoopBackOff), batch-renderer (Pending/unschedulable) | same |
 
 The LGTM stack (Loki for logs, Tempo for traces, Mimir for metrics, Grafana on
@@ -120,6 +120,7 @@ templates and the cluster.
 | 17 | Capstone: build and inspect an observability pipeline | manifests + state |
 | 18 | Capstone: wire the pipeline into the LGTM stack | live config + state |
 | 19 | Capstone: generate application telemetry and collect cluster metrics | manifests + live config |
+| 20 | Capstone: UIs and dashboards | manifests + dashboard JSON |
 
 ## The capstone (exercise 17)
 
@@ -150,6 +151,19 @@ cluster's own telemetry — kube-state-metrics with the RBAC it needs, and a
 node-exporter DaemonSet with hostPath mounts. The collector learns a `prometheus`
 receiver and scrapes both, so the metrics pipeline goes from
 `receivers: [otlp]` to `receivers: [otlp, prometheus]`.
+
+The last exercise is about what people actually look at. The LGTM deployment
+exposes two UIs — `grafana.dojo.local` for dashboards and `tempo.dojo.local` for
+trace search — and ships two prebuilt dashboards as labelled ConfigMaps that a
+`k8s-sidecar` container renders into Grafana's dashboards directory:
+
+| Dashboard | Covers |
+|---|---|
+| Kubernetes / Cluster overview | nodes ready, pods by phase, node CPU and memory, restarts, logs, traces |
+| Dojo / Pipeline components | accepted vs sent spans, exporter queue, drops, per-replica throughput, backend health |
+
+You add the third one: a service-level dashboard for the pipeline itself, written
+as a labelled ConfigMap and checked by parsing the JSON the cluster holds.
 
 Grading is a server-side `kubectl apply --dry-run=server` over your files plus
 live assertions on every object, so neither invalid YAML nor a guessed answer
@@ -201,3 +215,5 @@ make tui            # K9S_CONFIG_DIR=$PWD/k9s-config k9s --context aks-dojo-dev
 | `node-agent` pods cover only one node | the DaemonSet is missing the `CriticalAddonsOnly` toleration |
 | kube-state-metrics is in `CrashLoopBackOff`/forbidden on a real cluster | the ClusterRole lacks `list`/`watch` on the resource it asks for |
 | exercise 19 says a generator container is missing | `deploy/synthetic-load` needs three containers, one per telemetry signal |
+| a dashboard never appears in Grafana | its ConfigMap lacks the `grafana_dashboard: "1"` label the sidecar watches |
+| Grafana shows no dashboards at all | `grafana-dashboard-provider` is missing, so the file provider has no path |

@@ -330,6 +330,7 @@ spec:
       labels:
         app: grafana
     spec:
+      serviceAccountName: grafana-dashboards
       containers:
         - name: grafana
           image: grafana/grafana:11.3.0
@@ -358,10 +359,43 @@ spec:
           volumeMounts:
             - name: datasources
               mountPath: /etc/grafana/provisioning/datasources
+            - name: dashboard-provider
+              mountPath: /etc/grafana/provisioning/dashboards
+            - name: dashboards
+              mountPath: /var/lib/grafana/dashboards
+        - name: dashboard-sidecar
+          image: quay.io/kiwigrid/k8s-sidecar:1.27.4
+          env:
+            - name: LABEL
+              value: grafana_dashboard
+            - name: LABEL_VALUE
+              value: "1"
+            - name: FOLDER
+              value: /var/lib/grafana/dashboards
+            - name: RESOURCE
+              value: configmap
+            - name: NAMESPACE
+              value: ALL
+            - name: REQ_USER_AGENT
+              value: dojo-sidecar
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 96Mi
+          volumeMounts:
+            - name: dashboards
+              mountPath: /var/lib/grafana/dashboards
       volumes:
         - name: datasources
           configMap:
             name: grafana-datasources
+        - name: dashboard-provider
+          configMap:
+            name: grafana-dashboard-provider
+        - name: dashboards
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -398,3 +432,26 @@ spec:
     - hosts:
         - grafana.dojo.local
       secretName: grafana-tls
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tempo
+  namespace: observability
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: tempo.dojo.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: tempo
+                port:
+                  number: 3200
+  tls:
+    - hosts:
+        - tempo.dojo.local
+      secretName: tempo-tls

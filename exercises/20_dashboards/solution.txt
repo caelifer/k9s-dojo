@@ -1,0 +1,29 @@
+# Exercise 20 -- reference answers
+
+grafana_host: grafana.dojo.local
+tempo_host: tempo.dojo.local
+prebuilt_dashboards: 2
+sidecar_container: dashboard-sidecar
+dashboards_path: /var/lib/grafana/dashboards
+my_dashboard_uid: dojo-pipeline-slo
+
+# The finished ConfigMap is exercises/20_dashboards/solution/70-slo-dashboard.yaml:
+#
+#   cp exercises/20_dashboards/solution/70-slo-dashboard.yaml \
+#      exercises/20_dashboards/manifests/70-slo-dashboard.yaml
+#   make apply N=20
+#
+# Notes
+# - A dashboard is a ConfigMap with the label grafana_dashboard=1. The sidecar
+#   copies its JSON keys into /var/lib/grafana/dashboards, and the file provider
+#   in grafana-dashboard-provider makes Grafana read that directory. Nothing
+#   restarts, which is why this pattern survives even a read-only Grafana image.
+# - Panel `datasource.uid` is the datasource identity, not its name: `mimir`,
+#   `loki` and `tempo` are the uids set in grafana-datasources.
+# - The queue panel is the one that matters operationally: growing
+#   `otelcol_exporter_queue_size` with flat export rate means the backend is
+#   holding back, and drops follow shortly after.
+# - The two prebuilt dashboards are seeded by the cluster, so you can compare
+#   your JSON with `cluster/base/86-dashboards.yaml` in this repository.
+# - There is no ingress controller here, so the UI hosts are declared and
+#   validated but never served. On a real cluster, both hosts answer over TLS.

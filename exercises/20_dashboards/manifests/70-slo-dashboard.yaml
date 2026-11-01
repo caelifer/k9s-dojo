@@ -1,0 +1,35 @@
+# 70-slo-dashboard.yaml -- fill in every TODO.
+#
+# Grafana already has two prebuilt dashboards from the cluster seed ("Cluster
+# overview" and "Pipeline components"). A sidecar container in the Grafana pod
+# watches every namespace for ConfigMaps labelled grafana_dashboard=1 and copies
+# their JSON into /var/lib/grafana/dashboards, so a dashboard is just a labelled
+# ConfigMap -- no Grafana restart, no API call.
+#
+# Requirements:
+#   - ConfigMap in the pipeline namespace, label grafana_dashboard: "1"
+#   - one key, pipeline-slo.json, holding a Grafana dashboard with
+#     uid dojo-pipeline-slo, title "Dojo / Pipeline SLO"
+#   - at least three panels
+#   - a templating variable named pod (type query)
+#   - one panel whose targets query otelcol_exporter_queue_size
+#   - one panel whose datasource uid is mimir
+#   - one logs panel whose datasource uid is loki
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-pipeline-slo
+  namespace: pipeline
+  labels: {}          # TODO: grafana_dashboard: "1"
+data:
+  pipeline-slo.json: |
+    {
+      "uid": "dojo-pipeline-slo",
+      "title": "Dojo / Pipeline SLO",
+      "schemaVersion": 39,
+      "version": 1,
+      "tags": ["dojo", "slo"],
+      "time": {"from": "now-1h", "to": "now"},
+      "templating": {"list": []},
+      "panels": []
+    }
