@@ -84,9 +84,10 @@ With the live stack up (`make ui`), the dummy loader in `ui/loader/` keeps
 hitting the backends and occasionally misbehaves on purpose. On the APM
 dashboard:
 
-- **Errors by service** — one service stands out; `<d>`/trace view on it leads to
-  the failing span names (`payload.mimir_bad_query`, `payload.tempo_unknown_route`,
-  `payload.loki_bad_push`, `payload.grafana_missing_dashboard`).
+- **Errors by service** — one service stands out; the **Error traces** table on
+  the same dashboard lists the failing spans (`payload.mimir_bad_query`,
+  `payload.tempo_unknown_route`, `payload.loki_bad_push`,
+  `payload.grafana_missing_dashboard`), and a trace ID opens the full trace.
 - **p95 latency by service** — `dojo-loader` jumps to about 1.2 s periodically;
   the span carries `loader.simulated_delay_seconds`, so a simulated slow
   dependency is never mistaken for real server time.

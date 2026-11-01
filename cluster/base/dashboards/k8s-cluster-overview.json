@@ -228,7 +228,7 @@
     },
     {
       "id": 10,
-      "type": "traces",
+      "type": "table",
       "title": "Recent traces",
       "datasource": {
         "type": "tempo",
@@ -244,9 +244,12 @@
         {
           "refId": "A",
           "query": "{}",
-          "queryType": "traceql"
+          "queryType": "traceql",
+          "limit": 20,
+          "tableType": "traces"
         }
-      ]
+      ],
+      "description": "TraceQL search results. The Tempo backend returns these as a table frame, so a table panel is what renders them; trace IDs stay clickable."
     }
   ]
 }

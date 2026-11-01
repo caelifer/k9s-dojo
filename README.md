@@ -206,7 +206,7 @@ trace search — and ships two prebuilt dashboards as labelled ConfigMaps that a
 |---|---|
 | Kubernetes / Cluster overview | nodes ready, pods by phase, node CPU and memory, restarts, logs, traces |
 | Dojo / Pipeline components | accepted vs sent spans, exporter queue, drops, per-replica throughput, backend health |
-| Dojo / APM (spans & traces) | spans/s per service, p95 latency, error ratio, service-graph edges, recent and error traces |
+| Dojo / APM (spans & traces) | spans/s per service, p95 latency, error ratio, service-graph edges, plus recent and error trace tables (TraceQL over Tempo, trace IDs clickable) |
 
 You add the third one: a service-level dashboard for the pipeline itself, written
 as a labelled ConfigMap and checked by parsing the JSON the cluster holds.
