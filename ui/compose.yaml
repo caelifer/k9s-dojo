@@ -47,6 +47,8 @@ services:
       # host.containers.internal, and ui/compose.docker.yaml repoints this for
       # docker, which needs an explicit host-gateway mapping.
       KSM_TARGET: host.containers.internal:8080
+      # the k8s_events receiver tails Events through this rewritten kubeconfig
+      KUBECONFIG: /etc/kubeconfig/kubeconfig
     command: ["--config=/etc/otel/config.yaml"]
     ports:
       - "4317:4317"
@@ -54,6 +56,7 @@ services:
       - "8888:8888"
     volumes:
       - ./config/otel-collector.yaml:/etc/otel/config.yaml:ro
+      - ./.kubeconfig:/etc/kubeconfig/kubeconfig:ro
     depends_on:
       - loki
       - tempo

@@ -70,6 +70,10 @@ wait_for() {
 
 cmd_up() {
   require
+  # the collector tails Kubernetes Events through this kubeconfig
+  python3 "$ROOT/bin/kubeconfig-ui.py" "$KUBECONFIG_FILE" "$PROJECT_DIR/.kubeconfig" \
+    aks-dojo-dev host.containers.internal ||
+    die "could not build the container kubeconfig"
   say "starting the live LGTM stack on $ENGINE (first run pulls images)"
   compose up -d || die "podman compose up failed"
   printf '\n'

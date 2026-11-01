@@ -29,6 +29,26 @@
           "text": "All",
           "value": "$__all"
         }
+      },
+      {
+        "name": "pod",
+        "label": "Pod",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "loki"
+        },
+        "definition": "label_values(service_name)",
+        "query": "label_values(service_name)",
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".+",
+        "multi": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "description": "All shows every stream; clicking a pod in the table narrows it"
       }
     ]
   },
@@ -625,8 +645,84 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pod"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Logs and events for this pod",
+                    "url": "d/dojo-k8s-overview?var-pod=${__value.raw}&var-namespace=${__data.fields.Namespace}",
+                    "targetBlank": false
+                  }
+                ]
+              }
+            ]
           }
         ]
+      }
+    },
+    {
+      "id": 15,
+      "type": "logs",
+      "title": "Pod logs and events",
+      "description": "Every stream in the dashboard time range when Pod = All; the selected pod's streams otherwise. Kubernetes Events are shipped under the involved object's name, so a Pending pod shows why it waits.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 14,
+        "x": 0,
+        "y": 41
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{service_name=~\"$pod\"}",
+          "maxLines": 300
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      }
+    },
+    {
+      "id": 16,
+      "type": "logs",
+      "title": "Pod warnings",
+      "description": "Recent problem events in the dashboard time range: all pods when Pod = All, the selected pod's events otherwise.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 10,
+        "x": 14,
+        "y": 41
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{service_name=~\"$pod\", event_kind=\"Pod\"} |~ \"(?i)fail|error|warn|insufficient|untolerated|backoff\"",
+          "maxLines": 300
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
       }
     }
   ]

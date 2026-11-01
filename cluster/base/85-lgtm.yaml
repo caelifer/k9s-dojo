@@ -44,6 +44,13 @@ data:
             period: 24h
     limits_config:
       allow_structured_metadata: true
+      otlp_config:
+        resource_attributes:
+          attributes_config:
+            - action: index_label
+              attributes:
+                - event.kind
+                - k8s.namespace.name
 ---
 apiVersion: v1
 kind: ConfigMap

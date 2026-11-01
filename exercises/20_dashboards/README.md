@@ -94,4 +94,9 @@ dashboard:
 - **Collector export queue** and **Error span ratio** — what an operator watches
   while the above happens.
 
+On the cluster overview, click a row in **Problematic pods**: the bottom panes
+switch to that pod's logs and Kubernetes Events, which is how you find out what a
+`Pending` pod is waiting on (`FailedScheduling: Insufficient memory`, untolerated
+taints, and so on).
+
 Fill in `answer.txt`, then `make check`.

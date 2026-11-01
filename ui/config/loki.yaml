@@ -29,6 +29,15 @@ schema_config:
 limits_config:
   allow_structured_metadata: true
   volume_enabled: true
+  # index the event identity so Grafana can filter by reason/kind instead of
+  # only by the involved object's name
+  otlp_config:
+    resource_attributes:
+      attributes_config:
+        - action: index_label
+          attributes:
+            - event.kind
+            - k8s.namespace.name
 
 analytics:
   reporting_enabled: false

@@ -25,7 +25,24 @@ receivers:
           static_configs:
             - targets: ["otel-collector:8888"]
 
+  # Kubernetes Events are the answer to "why is this pod Pending": FailedScheduling,
+  # ImagePullBackOff and friends. The receiver returns the event object, so the
+  # involved object's name becomes service.name and Loki can index it per pod.
+  k8s_events:
+    auth_type: kubeConfig
+    namespaces: [shop, payments, ops, observability]
+
 processors:
+  transform/events:
+    log_statements:
+      - context: log
+        statements:
+          # the receiver puts the event and object identity on the resource, so
+          # the involved object's name becomes the Loki stream name
+          - set(resource.attributes["service.name"], resource.attributes["k8s.object.name"])
+          - set(resource.attributes["event.kind"], resource.attributes["k8s.object.kind"])
+          - set(resource.attributes["event.reason"], resource.attributes["k8s.event.reason"])
+
   # `insert` only writes when the resource attribute is absent, so producers that
   # name their service keep it; anything else stops showing as "unknown service".
   # This must be the resource processor, not attributes: the latter would attach
@@ -76,4 +93,8 @@ service:
     logs:
       receivers: [otlp]
       processors: [resource/service, memory_limiter, batch]
+      exporters: [otlphttp/loki]
+    logs/events:
+      receivers: [k8s_events]
+      processors: [transform/events, memory_limiter, batch]
       exporters: [otlphttp/loki]

@@ -204,7 +204,7 @@ trace search — and ships two prebuilt dashboards as labelled ConfigMaps that a
 
 | Dashboard | Covers |
 |---|---|
-| Kubernetes / Cluster overview | nodes ready, pods by phase, node CPU and memory, restarts per pod, pods waiting by reason, a Problematic-pods table (namespace/pod/phase/reason/restarts, colour-coded: orange transient, red error), logs, traces |
+| Kubernetes / Cluster overview | nodes ready, pods by phase, node CPU and memory, restarts per pod, pods waiting by reason, a Problematic-pods table (namespace/pod/phase/reason/restarts, colour-coded: orange transient, red error; click a pod to load its events), and a bottom pane that shows the selected pod's logs and Kubernetes events, logs, traces |
 | Dojo / Pipeline components | accepted vs sent spans, exporter queue, drops, per-replica throughput, backend health, the log stream and a traces-through-the-pipeline table |
 | Dojo / APM (spans & traces) | spans/s per service, p95 latency, error ratio, service-graph edges, plus recent and error trace tables (TraceQL over Tempo, trace IDs clickable) |
 
@@ -270,8 +270,10 @@ problems the last exercise asks you to find:
 | `slow_backend` with `loader.simulated_delay_seconds` | p95 latency spike, `loader_slo_breaches_total` |
 | healthy cycles | the baseline rate, latency and error floor |
 
-Data comes from the same sources the exercises describe: `kube-state-metrics`
-talks to the dojo API server (so `kube_*` series describe the real seed objects),
+Data comes from the same sources the exercises describe: the collector tails the
+dojo API server's Kubernetes Events (so a Pending pod's `FailedScheduling` line is
+in Loki under that pod's name), `kube-state-metrics` talks to the same API server
+(so `kube_*` series describe the real seed objects),
 `node-exporter` reads the host, the collector scrapes itself for `otelcol_*`
 series, and three `telemetrygen` containers push synthetic spans, metrics and
 logs through the collector into Tempo, Mimir and Loki.
