@@ -228,13 +228,14 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "{namespace=\"pipeline\"}"
+          "expr": "{service_name=~\"dojo-loader|worker\"}"
         }
-      ]
+      ],
+      "description": "Streams the pipeline forwards: the loader and the log generator. Loki indexes the OTLP resource attribute as service_name, not a namespace."
     },
     {
       "id": 10,
-      "type": "traces",
+      "type": "table",
       "title": "Traces through the pipeline",
       "datasource": {
         "type": "tempo",
@@ -249,9 +250,13 @@
       "targets": [
         {
           "refId": "A",
-          "query": "{ resource.service.name = \"synthetic-load\" }"
+          "query": "{ resource.service.name =~ \"frontend|checkout-api|dojo-loader\" }",
+          "queryType": "traceql",
+          "limit": 20,
+          "tableType": "traces"
         }
-      ]
+      ],
+      "description": "TraceQL search over the services the generators report. The Tempo backend returns a table frame, so this is a table panel; trace IDs stay clickable."
     }
   ]
 }

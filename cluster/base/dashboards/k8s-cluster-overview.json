@@ -222,9 +222,10 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "{namespace=~\"$namespace\"}"
+          "expr": "{service_name=~\".+\"}"
         }
-      ]
+      ],
+      "description": "Everything Loki has, labelled by service_name. The namespace variable applies to the metrics panels; the dojo ships logs from the loader and the generators."
     },
     {
       "id": 10,
