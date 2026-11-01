@@ -1,0 +1,18 @@
+# Observability pipeline namespace.
+# Applied by you, unchanged: the namespace carries the label k9s filters on.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pipeline
+  labels:
+    team: platform
+    dojo.azure/environment: platform
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: collector-secret
+  namespace: pipeline
+type: Opaque
+stringData:
+  EXPORTER_API_KEY: dojo-pipeline-key

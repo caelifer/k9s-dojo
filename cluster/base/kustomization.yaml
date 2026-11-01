@@ -7,3 +7,6 @@ resources:
   - 30-payments.yaml
   - 40-ops.yaml
   - 50-addons.yaml
+  - 60-storage.yaml
+  - 70-statefulset.yaml
+  - 80-ingress.yaml

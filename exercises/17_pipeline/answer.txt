@@ -1,0 +1,32 @@
+# Exercise 17 -- capstone: observability pipeline
+# Fill in every value after the colon. Leave the key names alone.
+
+# How many collector pods are ready
+collector_pods:
+
+# Name of the first collector pod
+first_collector_pod:
+
+# How many PersistentVolumeClaims the StatefulSet created
+pvc_count:
+
+# State of those claims
+pvc_state:
+
+# The collector Service that has no cluster IP
+headless_service:
+
+# Host the collector Ingress routes
+ingress_host:
+
+# HPA minimum number of replicas
+hpa_min_replicas:
+
+# HPA maximum number of replicas
+hpa_max_replicas:
+
+# How many node-agent pods run in aks-dojo-dev
+agent_pods:
+
+# Name of the collector pod's init container
+init_container:

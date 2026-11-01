@@ -58,9 +58,22 @@ create_cluster() {
   kubectl config delete-user "kwok-$name" >/dev/null 2>&1
 }
 
+# A Retain PersistentVolume that lost its claim goes to Released and never
+# returns to Available on its own; the dojo reuses the same four volumes, so the
+# stale claim reference is dropped before seeding.
+reclaim_released_pvs() {
+  local ctx=$1 pv
+  for pv in $(kubectl --context "$ctx" get pv \
+    -o jsonpath='{range .items[?(@.status.phase=="Released")]}{.metadata.name}{"\n"}{end}' 2>/dev/null); do
+    kubectl --context "$ctx" patch pv "$pv" --type=json \
+      -p '[{"op":"remove","path":"/spec/claimRef"}]' >/dev/null 2>&1
+  done
+}
+
 seed_cluster() {
   local env=$1 ctx
   ctx=$(context_name "$env")
+  reclaim_released_pvs "$ctx"
   # kwok starts one unlabelled node; the Azure topology comes from nodes.yaml.
   kubectl --context "$ctx" delete node node-000000 --ignore-not-found >/dev/null 2>&1
   say "seeding $ctx"

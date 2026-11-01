@@ -1,6 +1,6 @@
 # k9s-dojo
 
-Sixteen exercises for the [k9s](https://k9scli.io) terminal UI, built like
+Seventeen exercises for the [k9s](https://k9scli.io) terminal UI, built like
 [ziglings](https://codeberg.org/ziglings/exercises): numbered exercises you edit,
 a checker that refuses to pass until the work is actually done, and a throwaway
 cluster that `make setup` builds for you.
@@ -8,7 +8,9 @@ cluster that `make setup` builds for you.
 The cluster is shaped like Azure AKS: two clusters in one kubeconfig, AKS-style
 context and user names, agent pools with zones and instance types, an `MC_…`
 resource group label on every node, AKS add-ons in `kube-system`, per-namespace
-quotas and limit ranges, and three workloads that are broken on purpose.
+quotas and limit ranges, a StatefulSet with its own PersistentVolumes, an
+Ingress with TLS, three workloads that are broken on purpose, and a capstone
+where you build an observability pipeline yourself.
 
 ## Prerequisites
 
@@ -48,12 +50,15 @@ make list      # progress through all sixteen
 | Namespaces | `shop`, `payments`, `ops` (+ cluster's own) | same + `analytics` |
 | Node pools | systempool (D2s_v5, zone 1), userpool (D4s_v5, zone 1) | systempool + 3× D8s_v5, zones 1-3 |
 | `shop` workloads | frontend ×3, frontend-canary, redis, checkout-api ×2, worker, batch-renderer | frontend ×5, redis, checkout-api ×2, worker, batch-renderer |
+| Stateful workload | `payments/storefront-db` StatefulSet, 2 replicas, one bound PVC each | same |
+| Edge | `shop/shop-edge` Ingress, host `shop.dojo.local`, TLS | same |
 | Broken on purpose | checkout-api (ImagePullBackOff), worker (CrashLoopBackOff), batch-renderer (Pending/unschedulable) | same |
 
 Everything else is normal Kubernetes: a ResourceQuota and LimitRange per
 namespace, a ServiceAccount plus Role and RoleBinding in `shop`, coredns,
 kube-proxy and csi-azuredisk-node in `kube-system`, one CronJob and one Job in
-`payments`.
+`payments`, and four static PersistentVolumes (`storageClassName: manual`) that
+satisfy claims because there is no CSI driver here.
 
 `bin/cluster` merges both clusters into `.dojo/kubeconfig` and deletes kwok's own
 contexts, so `:ctx` shows exactly the two AKS-shaped entries. Your real
@@ -81,6 +86,11 @@ The checker prints every expectation it evaluates, in order, and exits non-zero
 until all of them hold. `.dojo/completed` records finished exercises; delete a
 line to redo one, delete the file to start over.
 
+`make selftest` is the maintainer's check: it fills every answer from its
+reference solution, applies the capstone manifests, performs the cluster edits
+that exercises 10-12 ask for, runs all seventeen checkers, and then restores the
+templates and the cluster.
+
 ## Exercises
 
 | No | Topic | Graded by |
@@ -101,6 +111,26 @@ line to redo one, delete the file to start over.
 | 14 | Aliases for command mode | config file |
 | 15 | Skins | config file |
 | 16 | Plugins: shell out from k9s | config file + command |
+| 17 | Capstone: build and inspect an observability pipeline | manifests + state |
+
+## The capstone (exercise 17)
+
+The last exercise is the whole tutorial in one go, shaped like Datadog's
+Kubernetes [observability pipeline
+reference](https://www.datadoghq.com/architecture/observability-pipelines-kubernetes-deployment/):
+a StatefulSet of OpenTelemetry collectors with one volume per replica, a
+headless Service for stable per-pod DNS, an Ingress with TLS for the OTLP/HTTP
+port, a DaemonSet node agent that tolerates the system pool taint, and an HPA
+pointed at the StatefulSet.
+
+You write the manifests yourself — `exercises/17_pipeline/manifests/` ships
+three files full of `TODO`s and one complete file — apply them with
+`make apply N=17`, watch the objects appear in k9s, and then answer inspection
+questions from `:sts`, `:pvc`, `:svc`, `:ing`, `:hpa` and `:ds`.
+
+Grading is a server-side `kubectl apply --dry-run=server` over your files plus
+live assertions on every object, so neither invalid YAML nor a guessed answer
+passes. Reference manifests are in `exercises/17_pipeline/solution/`.
 
 ## What the simulated kubelet cannot do
 
@@ -142,3 +172,5 @@ make tui            # K9S_CONFIG_DIR=$PWD/k9s-config k9s --context aks-dojo-dev
 | broken workloads look Healthy | the fault watcher died: `make reset` |
 | `no such exercise: 5` | ids are two digits: `make check N=05` |
 | plugins or skins do nothing | k9s was started without `make tui`, so `K9S_CONFIG_DIR` is unset |
+| claims in exercise 17 stay Pending | `storageClassName` is not `manual`, so no static PV can match |
+| `node-agent` pods cover only one node | the DaemonSet is missing the `CriticalAddonsOnly` toleration |

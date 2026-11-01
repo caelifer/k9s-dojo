@@ -1,0 +1,33 @@
+# Exercise 17 -- reference answers
+
+collector_pods: 2
+first_collector_pod: collector-0
+pvc_count: 2
+pvc_state: Bound
+headless_service: collector
+ingress_host: collector.dojo.local
+hpa_min_replicas: 2
+hpa_max_replicas: 6
+agent_pods: 2
+init_container: init-config
+
+# Working manifests are in exercises/17_pipeline/solution/ -- copy them over
+# manifests/ if you want to move on, then re-apply:
+#
+#   cp exercises/17_pipeline/solution/*.yaml exercises/17_pipeline/manifests/
+#   make apply N=17
+#
+# Notes
+# - A StatefulSet names its pods <name>-<ordinal>, so collector-0 and
+#   collector-1; a Deployment would give you a pod-template hash instead. The
+#   ordinal is the identity that the PVC name is derived from:
+#   data-collector-0, data-collector-1.
+# - The headless Service (clusterIP: None) is what gives each ordinal a stable
+#   DNS name: collector-0.collector.pipeline.svc.cluster.local.
+# - The claims bind only because storageClassName: manual matches the static
+#   PersistentVolumes; there is no dynamic provisioner behind `manual`.
+# - The DaemonSet needs the CriticalAddonsOnly toleration or it lands on the
+#   user pool only, leaving the system node unmonitored -- the classic
+#   "half the nodes are missing" bug in observability pipelines.
+# - The HPA shows CPU as unknown here: pointing it at a StatefulSet is correct,
+#   but there is no metrics-server in this cluster to feed it.

@@ -1,0 +1,148 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: collector-config
+  namespace: pipeline
+data:
+  collector.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc: {}
+          http: {}
+    exporters:
+      otlphttp:
+        endpoint: https://trace.dojo.local:4318
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          exporters: [otlphttp]
+  pipelines.yaml: |
+    profiles: [traces, metrics, logs]
+    batch:
+      timeout: 5s
+      send_batch_size: 512
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: collector
+  namespace: pipeline
+  labels:
+    app: collector
+spec:
+  clusterIP: None
+  selector:
+    app: collector
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: collector-edge
+  namespace: pipeline
+  labels:
+    app: collector
+spec:
+  selector:
+    app: collector
+  ports:
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: collector
+  namespace: pipeline
+spec:
+  serviceName: collector
+  replicas: 2
+  selector:
+    matchLabels:
+      app: collector
+  template:
+    metadata:
+      labels:
+        app: collector
+    spec:
+      initContainers:
+        - name: init-config
+          image: busybox:1.37
+          command: ["sh", "-c", "cp /config/collector.yaml /etc/otel/collector.yaml"]
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: runtime-config
+              mountPath: /etc/otel
+      containers:
+        - name: otel-collector
+          image: otel/opentelemetry-collector-contrib:0.115.1
+          args: ["--config=/etc/otel/collector.yaml"]
+          ports:
+            - name: otlp-grpc
+              containerPort: 4317
+            - name: otlp-http
+              containerPort: 4318
+          envFrom:
+            - configMapRef:
+                name: collector-config
+            - secretRef:
+                name: collector-secret
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: runtime-config
+              mountPath: /etc/otel
+            - name: data
+              mountPath: /var/lib/collector
+      volumes:
+        - name: config
+          configMap:
+            name: collector-config
+        - name: runtime-config
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: manual
+        resources:
+          requests:
+            storage: 1Gi
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: collector
+  namespace: pipeline
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: collector
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

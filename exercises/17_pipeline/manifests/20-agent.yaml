@@ -1,0 +1,24 @@
+# 20-agent.yaml -- fill in every TODO.
+#
+# The node agent runs once per node, like the datadog-agent DaemonSet in a real
+# pipeline: it must tolerate the system pool taint, or half the cluster is
+# unmonitored.
+#
+# Requirements:
+#   - DaemonSet `node-agent`, selector app: node-agent
+#   - container named agent, image otel/opentelemetry-collector-contrib:0.115.1
+#   - toleration for key CriticalAddonsOnly (any effect)
+#   - a hostPath volume named varlog mounted read-only at /var/log
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-agent
+  namespace: pipeline
+spec:
+  # TODO: selector + template + tolerations + hostPath volume
+  template:
+    metadata:
+      labels:
+        app: node-agent
+    spec:
+      containers: []

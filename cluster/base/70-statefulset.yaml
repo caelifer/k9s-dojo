@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: storefront-db
+  namespace: payments
+  labels:
+    app: storefront-db
+spec:
+  clusterIP: None
+  selector:
+    app: storefront-db
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: storefront-db
+  namespace: payments
+  labels:
+    app: storefront-db
+spec:
+  serviceName: storefront-db
+  replicas: 2
+  selector:
+    matchLabels:
+      app: storefront-db
+  template:
+    metadata:
+      labels:
+        app: storefront-db
+        tier: data
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_DB
+              value: storefront
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ledger-secret
+                  key: LEDGER_TOKEN
+          args:
+            - -c
+            - max_connections=200
+            - -c
+            - shared_buffers=256MB
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: manual
+        resources:
+          requests:
+            storage: 1Gi

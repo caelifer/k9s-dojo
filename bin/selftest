@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# bin/selftest -- prove that every exercise passes with its reference answers.
+#
+# It fills each answer.txt from solution.txt, applies the capstone's reference
+# manifests, performs the cluster edits exercises 10-12 ask for, runs every
+# checker, and then restores the templates and the cluster. Run it after
+# changing an exercise, a check or the seed manifests.
+set -uo pipefail
+
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+STATE="$ROOT/.dojo"
+export KUBECONFIG="$STATE/kubeconfig"
+CTX_DEV=aks-dojo-dev
+CTX_PROD=aks-dojo-prod
+
+backup=$(mktemp -d)
+cleanup() {
+  local d
+  for d in "$ROOT"/exercises/*/; do
+    cp "$backup/answers/$(basename "$d")" "$d/answer.txt" 2>/dev/null
+  done
+  if [[ -d $backup/manifests ]]; then
+    cp "$backup"/manifests/*.yaml "$ROOT/exercises/17_pipeline/manifests/" 2>/dev/null
+  fi
+  kubectl --context "$CTX_DEV" delete namespace pipeline --wait=false >/dev/null 2>&1
+  rm -rf "$backup"
+  rm -f "$STATE/completed"
+}
+trap cleanup EXIT
+
+if ! kubectl --context "$CTX_DEV" get ns shop >/dev/null 2>&1; then
+  printf '  no cluster; run make setup first\n' >&2
+  exit 2
+fi
+
+mkdir -p "$backup/answers"
+for d in "$ROOT"/exercises/*/; do
+  cp "$d/answer.txt" "$backup/answers/$(basename "$d")"
+  awk '!/^#/' "$d/solution.txt" >"$d/answer.txt"
+done
+
+# exercise 17 is graded on manifests, so the reference manifests are applied
+mkdir -p "$backup/manifests"
+cp "$ROOT"/exercises/17_pipeline/manifests/*.yaml "$backup/manifests/"
+cp "$ROOT"/exercises/17_pipeline/solution/*.yaml "$ROOT/exercises/17_pipeline/manifests/"
+kubectl --context "$CTX_DEV" apply -f "$ROOT/exercises/17_pipeline/manifests/" >/dev/null 2>&1
+
+# 10-12 are graded on live state, so act like a learner
+kubectl --context "$CTX_PROD" -n shop scale deploy frontend --replicas=7 >/dev/null 2>&1
+redis=$(kubectl --context "$CTX_DEV" -n shop get pods -l app=redis -o jsonpath='{.items[0].metadata.name}')
+kubectl --context "$CTX_DEV" -n shop patch pod "$redis" --type=strategic \
+  -p '{"spec":{"containers":[{"name":"redis","image":"redis:7.4-alpine"}]}}' >/dev/null 2>&1
+frontend=$(kubectl --context "$CTX_DEV" -n shop get pods -l app=frontend -o jsonpath='{.items[0].metadata.name}')
+kubectl --context "$CTX_DEV" -n shop delete pod "$frontend" --wait=false >/dev/null 2>&1
+sleep 6
+
+rm -f "$STATE/completed"
+"$ROOT/bin/dojo" check all
+rc=$?
+
+# the capstone namespace and its volumes have to go back to a clean state, and
+# the pod-level edit from exercise 11 has to be rolled back by its ReplicaSet
+kubectl --context "$CTX_DEV" delete namespace pipeline --wait=true --timeout=60s >/dev/null 2>&1
+kubectl --context "$CTX_DEV" -n shop delete pod -l app=redis --wait=false >/dev/null 2>&1
+"$ROOT/bin/cluster" up >/dev/null 2>&1
+
+if ((rc == 0)); then
+  printf '\n  selftest: every exercise passes\n\n'
+else
+  printf '\n  selftest: FAILED (see above)\n\n' >&2
+fi
+exit $rc

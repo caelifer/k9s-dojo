@@ -1,4 +1,4 @@
-.PHONY: help setup up reset down teardown list next check solution edit tui status cluster
+.PHONY: help setup up reset down teardown list next check apply solution edit tui status cluster selftest
 
 SHELL := /bin/bash
 CTX ?= aks-dojo-dev
@@ -28,6 +28,9 @@ down: reset ## alias for make reset
 teardown: ## delete the cluster, keep the repository
 	@bin/cluster down
 
+selftest: ## run every exercise with its reference answers (mutates the cluster)
+	@bin/selftest
+
 status: ## show cluster and exercise progress
 	@bin/cluster status
 	@bin/dojo progress
@@ -40,6 +43,9 @@ next: ## show the exercise you should be doing
 
 check: ## verify the current exercise, or `make check N=04`
 	@bin/dojo check $(N)
+
+apply: ## apply an exercise's manifests, e.g. `make apply N=17`
+	@bin/dojo apply $(N)
 
 solution: ## print the reference answers, e.g. `make solution N=04`
 	@bin/dojo solution $(N)

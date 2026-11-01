@@ -1,0 +1,52 @@
+# 10-collector.yaml -- fill in every TODO.
+#
+# Goal: a StatefulSet of OpenTelemetry collectors, two replicas, each with its
+# own 1Gi volume from `volumeClaimTemplates`, plus the Services and the HPA the
+# ingress and the autoscaler need.
+#
+# Requirements:
+#   - ConfigMap `collector-config` with two keys: collector.yaml, pipelines.yaml
+#   - Service `collector`: headless (clusterIP: None), ports otlp-grpc 4317,
+#     otlp-http 4318, selector app: collector
+#   - Service `collector-edge`: ClusterIP, port 4318 -> targetPort 4318
+#   - StatefulSet `collector`: serviceName collector, 2 replicas,
+#     selector app: collector, container named otel-collector,
+#     image otel/opentelemetry-collector-contrib:0.115.1,
+#     an initContainer named init-config, envFrom the ConfigMap and the Secret,
+#     volumeClaimTemplates entry `data` of 1Gi with storageClassName manual,
+#     mounted at /var/lib/collector
+#   - HorizontalPodAutoscaler `collector`: min 2, max 6, 70% CPU
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: collector-config
+  namespace: pipeline
+data:
+  # TODO: two keys, collector.yaml and pipelines.yaml, any realistic content
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: collector
+  namespace: pipeline
+spec:
+  # TODO: headless service, two named ports
+  selector:
+    app: collector
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: collector
+  namespace: pipeline
+spec:
+  # TODO: serviceName, replicas, selector, template, volumeClaimTemplates
+  selector:
+    matchLabels:
+      app: collector
+  template:
+    metadata:
+      labels:
+        app: collector
+    spec:
+      containers: []
