@@ -20,6 +20,12 @@ patch_checkout() {
     kubectl --context "$ctx" -n shop patch "$pod" --subresource=status --type=merge -p '{
       "status": {
         "phase": "Pending",
+        "conditions": [
+          {"type": "PodScheduled", "status": "True"},
+          {"type": "Initialized", "status": "True"},
+          {"type": "Ready", "status": "False", "reason": "ContainersNotReady"},
+          {"type": "ContainersReady", "status": "False", "reason": "ContainersNotReady"}
+        ],
         "containerStatuses": [{
           "name": "api",
           "ready": false,
@@ -36,16 +42,28 @@ patch_checkout() {
   done
 }
 
+# A real crash loop increments the restart counter; kwok does not, so the count
+# is derived from how long this watcher has been running. Without it the restart
+# rate stays at zero and the dashboards look calm while pods keep crashing.
+STARTED=$(date +%s)
+
 patch_worker() {
-  local ctx=$1 pod
+  local ctx=$1 pod restarts
+  restarts=$(( 6 + ($(date +%s) - STARTED) / 30 ))
   for pod in $(kubectl --context "$ctx" -n shop get pods -l app=worker -o name 2>/dev/null); do
     kubectl --context "$ctx" -n shop patch "$pod" --subresource=status --type=merge -p '{
       "status": {
         "phase": "Running",
+        "conditions": [
+          {"type": "PodScheduled", "status": "True"},
+          {"type": "Initialized", "status": "True"},
+          {"type": "Ready", "status": "False", "reason": "ContainersNotReady"},
+          {"type": "ContainersReady", "status": "False", "reason": "ContainersNotReady"}
+        ],
         "containerStatuses": [{
           "name": "worker",
           "ready": false,
-          "restartCount": 6,
+          "restartCount": '"$restarts"',
           "image": "alpine:3.20",
           "imageID": "",
           "state": {"waiting": {

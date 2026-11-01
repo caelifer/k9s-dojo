@@ -186,7 +186,7 @@
     {
       "id": 8,
       "type": "timeseries",
-      "title": "Container restarts",
+      "title": "Restarts per pod (15m)",
       "datasource": {
         "type": "prometheus",
         "uid": "mimir"
@@ -200,10 +200,11 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "increase(kube_pod_container_status_restarts_total{namespace=~\"$namespace\"}[15m]) > 0",
-          "legendFormat": "{{namespace}}/{{pod}}/{{container}}"
+          "expr": "sum by (pod) (increase(kube_pod_container_status_restarts_total{namespace=~\"$namespace\"}[15m])) > 0",
+          "legendFormat": "{{pod}}"
         }
-      ]
+      ],
+      "description": "increase() over the restart counter, which the simulated crash loop keeps raising"
     },
     {
       "id": 9,
@@ -251,6 +252,382 @@
         }
       ],
       "description": "TraceQL search results. The Tempo backend returns these as a table frame, so a table panel is what renders them; trace IDs stay clickable."
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Pods not Running",
+      "description": "Pending, Failed or Unknown pods: the states a rollout gets stuck in",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 0,
+        "y": 25
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(kube_pod_status_phase{phase=~\"Pending|Failed|Unknown\"})"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Pods waiting by reason",
+      "description": "ImagePullBackOff, CrashLoopBackOff, ContainerCreating \u2014 what k9s shows in the STATUS column",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 10,
+        "x": 6,
+        "y": 25
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (reason) (kube_pod_container_status_waiting_reason{reason!=\"\"}) > 0",
+          "legendFormat": "{{reason}}"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "Pods not Ready",
+      "description": "Ready condition false, across every namespace in scope",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 25
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(kube_pod_status_ready{condition=\"false\"})"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "table",
+      "title": "Problematic pods",
+      "description": "One row per pod that is not happily running: phase Pending/Failed/Unknown, or a container stuck in a waiting reason such as ImagePullBackOff or CrashLoopBackOff. Transient states are orange/blue, errors are red. Same information k9s puts in its STATUS column.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kube_pod_status_phase{phase=~\"Pending|Failed|Unknown\"} > 0",
+          "instant": true,
+          "format": "table",
+          "legendFormat": "phase"
+        },
+        {
+          "refId": "B",
+          "expr": "kube_pod_container_status_waiting_reason{reason!=\"\"} > 0",
+          "instant": true,
+          "format": "table",
+          "legendFormat": "reason"
+        },
+        {
+          "refId": "C",
+          "expr": "sum by (namespace, pod) (kube_pod_container_status_restarts_total) > 0",
+          "instant": true,
+          "format": "table",
+          "legendFormat": "restarts"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true,
+              "Value #A": true,
+              "Value #B": true,
+              "__name__": true,
+              "job": true,
+              "instance": true,
+              "uid": true,
+              "service_name": true,
+              "service_instance_id": true,
+              "server_address": true,
+              "server_port": true,
+              "http_scheme": true,
+              "net_host_name": true,
+              "net_host_port": true,
+              "url_scheme": true
+            },
+            "renameByName": {
+              "namespace": "Namespace",
+              "pod": "Pod",
+              "phase": "Phase",
+              "reason": "Waiting reason",
+              "container": "Container",
+              "Value #C": "Restarts"
+            },
+            "indexByName": {
+              "Namespace": 0,
+              "Pod": 1,
+              "Phase": 2,
+              "Waiting reason": 3,
+              "Container": 4,
+              "Restarts": 5
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Namespace",
+            "desc": false
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Phase"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "Pending": {
+                        "text": "Pending",
+                        "color": "orange",
+                        "index": 0
+                      },
+                      "Unknown": {
+                        "text": "Unknown",
+                        "color": "purple",
+                        "index": 1
+                      },
+                      "Failed": {
+                        "text": "Failed",
+                        "color": "dark-red",
+                        "index": 2
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.align",
+                "value": "left"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Waiting reason"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "ImagePullBackOff": {
+                        "text": "ImagePullBackOff",
+                        "color": "dark-red",
+                        "index": 0
+                      },
+                      "ErrImagePull": {
+                        "text": "ErrImagePull",
+                        "color": "dark-red",
+                        "index": 1
+                      },
+                      "CrashLoopBackOff": {
+                        "text": "CrashLoopBackOff",
+                        "color": "dark-red",
+                        "index": 2
+                      },
+                      "ContainerCreating": {
+                        "text": "ContainerCreating",
+                        "color": "blue",
+                        "index": 3
+                      },
+                      "PodInitializing": {
+                        "text": "PodInitializing",
+                        "color": "blue",
+                        "index": 4
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Restarts"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    },
+                    {
+                      "color": "red",
+                      "value": 5
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 }
