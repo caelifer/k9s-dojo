@@ -247,9 +247,14 @@ serves the browser here.
 
 `make target-state` applies the reference manifests for exercises 17-20 to the
 cluster — the built pipeline, the LGTM wiring, the generators, the cluster
-exporters and the dashboard ConfigMap — and prints what to look at. It is an
-answer key for the *cluster*, not for the exercises: your answer files and your
-manifests stay exactly as they were, so `make check` keeps grading your work.
+exporters and the dashboard ConfigMap — plus `target/loader.yaml`, the same
+instrumented dummy loader the live stack runs. On a real cluster that image has
+to be built and pushed first (`podman build -t <registry>/k9s-dojo-loader
+ui/loader`); no kubelet here will pull it.
+
+It is an answer key for the *cluster*, not for the exercises: your answer files
+and your manifests stay exactly as they were, so `make check` keeps grading your
+work.
 
 ```sh
 make target-state        # build the end state, print the inspection tour
