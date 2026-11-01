@@ -1,4 +1,4 @@
-.PHONY: help setup up reset down teardown list next check apply solution edit tui status cluster selftest
+.PHONY: help setup up reset down teardown destroy list next check apply solution edit tui status cluster selftest ui ui-down ui-status target-state target-state-clear
 
 SHELL := /bin/bash
 CTX ?= aks-dojo-dev
@@ -25,8 +25,11 @@ reset: ## delete and rebuild the cluster from scratch
 down: reset ## alias for make reset
 	@:
 
-teardown: ## delete the cluster, keep the repository
+teardown: ## delete the clusters, keep the repository and the live UIs
 	@bin/cluster down
+
+destroy: ## stop the UIs, delete the clusters and remove all temporary state
+	@bin/destroy
 
 selftest: ## run every exercise with its reference answers (mutates the cluster)
 	@bin/selftest
@@ -52,6 +55,21 @@ solution: ## print the reference answers, e.g. `make solution N=04`
 
 edit: ## open the exercise answer file, e.g. `make edit N=04`
 	@bin/dojo edit $(N)
+
+target-state: ## build the finished capstone so it can be inspected live
+	@bin/target-state apply
+
+target-state-clear: ## remove the target state again
+	@bin/target-state clear
+
+ui: ## start the live LGTM UIs (Grafana on :3000, Tempo on :3200)
+	@bin/ui up
+
+ui-down: ## stop the live LGTM UIs
+	@bin/ui down
+
+ui-status: ## show which live UIs answer
+	@bin/ui status
 
 tui: ## run k9s against a dojo cluster (make tui CTX=aks-dojo-prod)
 	@K9S_CONFIG_DIR=$(CURDIR)/k9s-config k9s --context $(CTX)

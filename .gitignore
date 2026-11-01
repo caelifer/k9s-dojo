@@ -1,2 +1,7 @@
 # runtime state: clusters, kubeconfig, progress, watcher pid
 .dojo/
+
+# k9s runtime state written next to the repo config
+k9s-config/clusters/
+k9s-config/benchmarks/
+k9s-config/screen-dumps/

@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# bin/ui -- run the live LGTM stack for the exercises.
+#
+#   ui up      start Loki, Tempo, Mimir, Grafana, the collector, kube-state-metrics,
+#              node-exporter and three telemetrygen load generators
+#   ui down    stop and remove them
+#   ui status  show what answers where
+#
+# The cluster objects describe what a real cluster would run; kwok has no
+# kubelet, so this project is what makes the UIs actually reachable.
+set -uo pipefail
+
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+PROJECT_DIR="$ROOT/ui"
+KUBECONFIG_FILE="$ROOT/.dojo/kubeconfig"
+
+say() { printf '  %s\n' "$*"; }
+die() {
+  printf '  error: %s\n' "$*" >&2
+  exit 1
+}
+
+compose() { podman compose -f "$PROJECT_DIR/compose.yaml" "$@"; }
+
+require() {
+  command -v podman >/dev/null || die "podman is required"
+  podman compose version >/dev/null 2>&1 || die "podman-compose is required"
+  [[ -r $KUBECONFIG_FILE ]] || die "no .dojo/kubeconfig; run make setup first"
+}
+
+wait_for() {
+  local url=$1 what=$2 tries=0
+  while ((tries < 60)); do
+    if curl -fsS -m 2 "$url" >/dev/null 2>&1; then return 0; fi
+    tries=$((tries + 1))
+    sleep 2
+  done
+  say "warning: $what did not become ready at $url"
+  return 1
+}
+
+cmd_up() {
+  require
+  say "starting the live LGTM stack (first run pulls images)"
+  compose up -d || die "podman compose up failed"
+  printf '\n'
+  wait_for http://127.0.0.1:3000/api/health grafana || true
+  wait_for http://127.0.0.1:3200/ready tempo || true
+  wait_for http://127.0.0.1:9009/ready mimir || true
+  wait_for http://127.0.0.1:3100/ready loki || true
+  printf '\n'
+  say "grafana    http://localhost:3000   (admin / dojo-grafana, anonymous admin too)"
+  say "tempo      http://localhost:3200   (trace search, TraceQL)"
+  say "mimir      http://localhost:9009   (prometheus API, no UI)"
+  say "loki       http://localhost:3100   (API, no UI)"
+  say "collector  localhost:4317 (OTLP gRPC), localhost:4318 (OTLP HTTP)"
+  printf '\n'
+  say "dashboards: Grafana -> Dojo folder (cluster overview, pipeline components)"
+  say "the in-cluster Ingress hosts (grafana.dojo.local, tempo.dojo.local) are"
+  say "what a real cluster would serve; here the live UIs are the localhost ports."
+  printf '\n'
+}
+
+cmd_down() {
+  require
+  say "stopping the live LGTM stack"
+  compose down --volumes >/dev/null 2>&1
+  say "stopped"
+}
+
+cmd_status() {
+  require
+  local targets=(
+    "grafana|http://127.0.0.1:3000/api/health"
+    "tempo|http://127.0.0.1:3200/ready"
+    "mimir|http://127.0.0.1:9009/ready"
+    "loki|http://127.0.0.1:3100/ready"
+    "collector|http://127.0.0.1:8888/metrics"
+    "kube-state-metrics|http://127.0.0.1:8080/metrics"
+    "node-exporter|http://127.0.0.1:9100/metrics"
+  )
+  local entry name url
+  printf '\n'
+  for entry in "${targets[@]}"; do
+    name=${entry%%|*}
+    url=${entry#*|}
+    if curl -fsS -m 2 "$url" >/dev/null 2>&1; then
+      printf '  %-20s %s\n' "$name" "up"
+    else
+      printf '  %-20s %s\n' "$name" "down"
+    fi
+  done
+  printf '\n'
+}
+
+case "${1:-}" in
+up) cmd_up ;;
+down) cmd_down ;;
+status) cmd_status ;;
+*)
+  printf 'usage: ui {up|down|status}\n' >&2
+  exit 2
+  ;;
+esac

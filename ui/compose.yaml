@@ -1,0 +1,125 @@
+name: k9s-dojo-ui
+
+# Live LGTM stack for doing the exercises against real UIs.
+#
+# The cluster objects in `cluster/` describe what a real AKS cluster would run;
+# kwok has no kubelet, so nothing inside it actually serves HTTP. This compose
+# project runs the same four backends on the host with rootless Podman, wired to
+# the dojo API server, so Grafana and Tempo answer in a browser while you work.
+#
+#   make ui        -> http://localhost:3000 (Grafana)  http://localhost:3200 (Tempo)
+#   make ui-down
+services:
+  loki:
+    image: docker.io/grafana/loki:3.2.1
+    command: ["-config.file=/etc/loki/config.yaml"]
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./config/loki.yaml:/etc/loki/config.yaml:ro
+      - loki-data:/loki
+    restart: unless-stopped
+
+  tempo:
+    image: docker.io/grafana/tempo:2.6.1
+    command: ["-config.file=/etc/tempo/config.yaml"]
+    ports:
+      - "3200:3200"
+    volumes:
+      - ./config/tempo.yaml:/etc/tempo/config.yaml:ro
+      - tempo-data:/var/tempo
+    restart: unless-stopped
+
+  mimir:
+    image: docker.io/grafana/mimir:2.14.0
+    command: ["-target=all", "-config.file=/etc/mimir/config.yaml"]
+    ports:
+      - "9009:9009"
+    volumes:
+      - ./config/mimir.yaml:/etc/mimir/config.yaml:ro
+      - mimir-data:/data
+    restart: unless-stopped
+
+  otel-collector:
+    image: docker.io/otel/opentelemetry-collector-contrib:0.115.1
+    command: ["--config=/etc/otel/config.yaml"]
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "8888:8888"
+    volumes:
+      - ./config/otel-collector.yaml:/etc/otel/config.yaml:ro
+    depends_on:
+      - loki
+      - tempo
+      - mimir
+    restart: unless-stopped
+
+  grafana:
+    image: docker.io/grafana/grafana:11.3.0
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: dojo-grafana
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./config/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+      - ./config/grafana-dashboard-provider.yaml:/etc/grafana/provisioning/dashboards/provider.yaml:ro
+      - ../cluster/base/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - mimir
+      - loki
+      - tempo
+    restart: unless-stopped
+
+  # kube-state-metrics talks to the dojo API server, which listens on the host's
+  # loopback, so this one runs with host networking and keeps the kubeconfig as
+  # written. Everything else reaches it as host.containers.internal:8080.
+  kube-state-metrics:
+    image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.13.0
+    network_mode: host
+    command:
+      - --kubeconfig=/kubeconfig
+      - --port=8080
+      - --resources=pods,nodes,deployments,statefulsets,daemonsets
+    volumes:
+      - ../.dojo/kubeconfig:/kubeconfig:ro
+    restart: unless-stopped
+
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:v1.8.2
+    pid: host
+    ports:
+      - "9100:9100"
+    restart: unless-stopped
+
+  telemetrygen-traces:
+    image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.115.0
+    command: ["traces", "--otlp-endpoint", "otel-collector:4317", "--otlp-insecure", "--rate", "20", "--duration", "1h"]
+    depends_on:
+      - otel-collector
+    restart: unless-stopped
+
+  telemetrygen-metrics:
+    image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.115.0
+    command: ["metrics", "--otlp-endpoint", "otel-collector:4317", "--otlp-insecure", "--rate", "20", "--duration", "1h"]
+    depends_on:
+      - otel-collector
+    restart: unless-stopped
+
+  telemetrygen-logs:
+    image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.115.0
+    command: ["logs", "--otlp-endpoint", "otel-collector:4317", "--otlp-insecure", "--rate", "20", "--duration", "1h"]
+    depends_on:
+      - otel-collector
+    restart: unless-stopped
+
+volumes:
+  loki-data:
+  tempo-data:
+  mimir-data:
+  grafana-data:

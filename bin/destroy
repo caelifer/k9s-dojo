@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# bin/destroy -- shut everything down and remove the temporary resources.
+#
+# Removes, in this order: the live UI stack (containers, network, volumes), the
+# two kwok clusters and their kubeconfigs, the fault watcher, and the .dojo state
+# directory. The repository itself is untouched -- answer files, manifests and
+# progress stay on disk unless you delete them, so `make destroy` is safe to run
+# between sessions.
+#
+#   destroy              stop and remove everything temporary
+#   destroy --images     also remove the container images the UI stack pulled
+set -uo pipefail
+
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+STATE="$ROOT/.dojo"
+WITH_IMAGES=0
+[[ ${1-} == --images ]] && WITH_IMAGES=1
+
+say() { printf '  %s\n' "$*"; }
+
+say "stopping the live UI stack"
+if command -v podman >/dev/null; then
+  podman compose -f "$ROOT/ui/compose.yaml" down --volumes >/dev/null 2>&1
+  # compose down leaves the network behind on some podman-compose versions
+  podman network rm k9s-dojo-ui_default >/dev/null 2>&1
+  say "  containers, network and volumes removed"
+else
+  say "  podman not installed, nothing to remove"
+fi
+
+if [[ $WITH_IMAGES == 1 ]]; then
+  say "removing UI images"
+  podman rmi -f \
+    docker.io/grafana/loki:3.2.1 \
+    docker.io/grafana/tempo:2.6.1 \
+    docker.io/grafana/mimir:2.14.0 \
+    docker.io/grafana/grafana:11.3.0 \
+    docker.io/otel/opentelemetry-collector-contrib:0.115.1 \
+    registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.13.0 \
+    quay.io/prometheus/node-exporter:v1.8.2 \
+    ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.115.0 \
+    >/dev/null 2>&1
+fi
+
+say "stopping the fault watcher and deleting the clusters"
+if [[ -r $STATE/simulate.pid ]]; then
+  kill "$(cat "$STATE/simulate.pid")" 2>/dev/null
+fi
+pkill -f "$ROOT/bin/simulate-faults.sh" 2>/dev/null
+if command -v kwokctl >/dev/null; then
+  for name in $(kwokctl get clusters 2>/dev/null | grep -E '^(dojo-|k9s-dojo)'); do
+    kwokctl delete cluster --name "$name" >/dev/null 2>&1
+    say "  deleted cluster $name"
+  done
+else
+  say "  kwokctl not installed, no cluster to delete"
+fi
+
+say "removing .dojo state"
+rm -rf "$STATE"
+
+printf '\n'
+say "done. temporary resources removed; the repository is untouched."
+say "rebuild with: make setup && make ui"
+printf '\n'

@@ -36,10 +36,12 @@ removes both clusters.
 
 ```sh
 make setup     # two clusters, seeded, in about 20 seconds
+make ui        # live Grafana (http://localhost:3000) and Tempo (:3200)
 make tui       # k9s against aks-dojo-dev with this repo's config
 make next      # which exercise is due
 make check     # verify it
-make list      # progress through all sixteen
+make list      # progress through all twenty
+make destroy   # stop the UIs, delete the clusters, remove .dojo
 ```
 
 ## The cluster
@@ -188,6 +190,62 @@ Because there is no kubelet, the two broken `shop` workloads would look healthy.
 `bin/simulate-faults.sh` (started by `make setup`, stopped by `make teardown`)
 rewrites their status every three seconds, which is also why a deleted
 `checkout-api` pod comes back broken, exactly as it would for real.
+
+## Live UIs
+
+The cluster objects describe what a real AKS cluster would run, but kwok has no
+kubelet, so nothing inside it serves HTTP. `make ui` therefore runs the same LGTM
+stack on the host with rootless Podman, wired to the dojo API server, so the
+dashboards show live data while you work:
+
+| UI | URL | Notes |
+|---|---|---|
+| Grafana | `http://localhost:3000` | dashboards in the **Dojo** folder, Explore, anonymous admin |
+| Tempo | `http://localhost:3200` | trace search / TraceQL |
+| Mimir, Loki | `:9009`, `:3100` | APIs only, no UI |
+| OTLP in | `localhost:4317`, `localhost:4318` | send your own spans with `telemetrygen` or an app |
+
+Data comes from the same sources the exercises describe: `kube-state-metrics`
+talks to the dojo API server (so `kube_*` series describe the real seed objects),
+`node-exporter` reads the host, the collector scrapes itself for `otelcol_*`
+series, and three `telemetrygen` containers push synthetic spans, metrics and
+logs through the collector into Tempo, Mimir and Loki.
+
+```sh
+make ui          # start everything (~1 GB of image pulls the first time)
+make ui-status   # which endpoints answer
+make ui-down     # stop and remove the volumes
+```
+
+The in-cluster Ingresses (`grafana.dojo.local`, `tempo.dojo.local`) are still the
+objects to inspect in k9s — `:ing -n observability` — they are just not what
+serves the browser here.
+
+## See the finished capstone before doing it
+
+`make target-state` applies the reference manifests for exercises 17-20 to the
+cluster — the built pipeline, the LGTM wiring, the generators, the cluster
+exporters and the dashboard ConfigMap — and prints what to look at. It is an
+answer key for the *cluster*, not for the exercises: your answer files and your
+manifests stay exactly as they were, so `make check` keeps grading your work.
+
+```sh
+make target-state        # build the end state, print the inspection tour
+make tui                 # :pods -n pipeline, :sts -n observability, :cm, :ing
+make ui                  # the same state, with live dashboards
+make target-state-clear  # remove the namespace and free the volumes
+```
+
+## Tearing down
+
+| Target | Removes | Keeps |
+|---|---|---|
+| `make ui-down` | the live LGTM containers, network and volumes | clusters, kubeconfigs, progress |
+| `make teardown` | the two kwok clusters and their kubeconfigs | the live UIs, the repository |
+| `make destroy` | everything temporary: UIs, both clusters, any stray `dojo-*` cluster, `.dojo/` state | the repository — answers, manifests and progress files stay on disk |
+
+`make destroy --images`-style image cleanup is available through the script
+itself (`bin/destroy --images`) for reclaiming the ~1 GB the UI stack pulls.
 
 ## Customisation
 

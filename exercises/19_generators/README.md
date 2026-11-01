@@ -90,6 +90,11 @@ pipeline` (node-exporter, one pod per node), `<enter>` on the DaemonSet to see
 which nodes it covers, `:cm -n pipeline` and `<y>` on `collector-config` to see
 the scrape configs you just wrote, `:sa` and `:clusterrole` for the RBAC.
 
+Live version: `make ui` runs the same shapes on the host with rootless Podman —
+telemetrygen → collector → Tempo/Loki/Mimir — so you can watch traces and metrics
+arrive in Grafana at `http://localhost:3000` while the cluster manifests stay the
+thing being graded.
+
 ## Questions
 
 1. Which image do the generators run? (repository name is enough)

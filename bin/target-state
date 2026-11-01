@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# bin/target-state -- apply the finished version of the capstone so it can be
+# inspected live, without doing the exercises first.
+#
+#   target-state apply   build the end state (pipeline + LGTM wiring + generators
+#                        + dashboards) from the reference manifests
+#   target-state clear   remove it again (namespace pipeline, released volumes)
+#
+# The cluster state is real; the answers in the exercise files are still blank,
+# so `make check` keeps asking you to answer. `make solution N=19` shows the
+# reference answers for whatever you are looking at.
+set -uo pipefail
+
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+STATE="$ROOT/.dojo"
+export KUBECONFIG="$STATE/kubeconfig"
+CTX=aks-dojo-dev
+
+say() { printf '  %s\n' "$*"; }
+die() {
+  printf '  error: %s\n' "$*" >&2
+  exit 1
+}
+
+require_cluster() {
+  [[ -r $STATE/kubeconfig ]] || die "no cluster; run make setup first"
+  kubectl --context "$CTX" get ns kube-system >/dev/null 2>&1 ||
+    die "cluster $CTX is not reachable; run make setup"
+}
+
+apply_reference() {
+  local dir=$1
+  [[ -d $ROOT/exercises/$dir/solution ]] || die "missing exercises/$dir/solution"
+  kubectl --context "$CTX" apply -f "$ROOT/exercises/$dir/solution/" >/dev/null ||
+    die "could not apply the reference manifests in exercises/$dir/solution"
+  say "applied exercises/$dir/solution"
+}
+
+cmd_apply() {
+  require_cluster
+  printf '\n'
+  # 17 creates the namespace and the collectors, 18 rewires the collector to
+  # LGTM, 19 adds generators and cluster exporters (and its own collector
+  # config), 20 adds the dashboard ConfigMap.
+  kubectl --context "$CTX" apply -f "$ROOT/exercises/17_pipeline/manifests/00-namespace.yaml" >/dev/null ||
+    die "could not create the pipeline namespace"
+  apply_reference 17_pipeline
+  apply_reference 18_lgtm
+  apply_reference 19_generators
+  apply_reference 20_dashboards
+
+  kubectl --context "$CTX" -n pipeline wait --for=condition=Ready pod \
+    --all --timeout=90s >/dev/null 2>&1 || say "warning: not every pod is Ready yet"
+
+  printf '\n'
+  say "target state is up in namespace pipeline:"
+  kubectl --context "$CTX" -n pipeline get deploy,sts,ds,cj --no-headers 2>/dev/null |
+    awk '{printf "    %-28s %s\n", $1, $2}'
+  printf '\n'
+  say "inspect it:"
+  say "  make tui                    k9s on $CTX"
+  say "  :pods -n pipeline           collectors, generators, kube-state-metrics"
+  say "  :sts -n observability       loki, tempo, mimir"
+  say "  :cm -n pipeline             collector config you are meant to write"
+  say "  :cm -n observability        prebuilt dashboards"
+  say "  :ing -n observability       grafana.dojo.local, tempo.dojo.local"
+  printf '\n'
+  say "live UIs: make ui, then http://localhost:3000 and http://localhost:3200"
+  say "remove it: make target-state-clear"
+  printf '\n'
+}
+
+cmd_clear() {
+  require_cluster
+  say "removing namespace pipeline"
+  kubectl --context "$CTX" delete namespace pipeline --wait=true --timeout=90s >/dev/null 2>&1
+  # Retain volumes from the dashboard/generator claims go back to Available so a
+  # later apply can bind them again.
+  "$ROOT/bin/cluster" up >/dev/null 2>&1
+  say "cleared"
+}
+
+case "${1:-}" in
+apply) cmd_apply ;;
+clear) cmd_clear ;;
+*)
+  printf 'usage: target-state {apply|clear}\n' >&2
+  exit 2
+  ;;
+esac

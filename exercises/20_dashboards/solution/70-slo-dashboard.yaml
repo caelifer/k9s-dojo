@@ -54,12 +54,12 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "sum(rate(otelcol_exporter_send_failed_spans{pod=~\"$pod\"}[5m]))",
+              "expr": "sum(rate(otelcol_exporter_send_failed_spans_total{pod=~\"$pod\"}[5m]))",
               "legendFormat": "failed"
             },
             {
               "refId": "B",
-              "expr": "sum(rate(otelcol_receiver_accepted_spans{pod=~\"$pod\"}[5m]))",
+              "expr": "sum(rate(otelcol_receiver_accepted_spans_total{pod=~\"$pod\"}[5m]))",
               "legendFormat": "accepted"
             }
           ]
@@ -71,7 +71,7 @@ data:
           "datasource": {"type": "prometheus", "uid": "mimir"},
           "gridPos": {"h": 8, "w": 6, "x": 0, "y": 8},
           "targets": [
-            {"refId": "A", "expr": "count(count by (pod) (rate(otelcol_receiver_accepted_spans[5m])))"}
+            {"refId": "A", "expr": "count(count by (pod) (rate(otelcol_receiver_accepted_spans_total[5m])))"}
           ]
         },
         {

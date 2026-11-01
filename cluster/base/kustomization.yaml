@@ -12,3 +12,20 @@ resources:
   - 80-ingress.yaml
   - 85-lgtm.yaml
   - 86-dashboards.yaml
+configMapGenerator:
+  - name: grafana-dashboard-k8s
+    namespace: observability
+    options:
+      labels:
+        grafana_dashboard: "1"
+      disableNameSuffixHash: true
+    files:
+      - dashboards/k8s-cluster-overview.json
+  - name: grafana-dashboard-pipeline
+    namespace: observability
+    options:
+      labels:
+        grafana_dashboard: "1"
+      disableNameSuffixHash: true
+    files:
+      - dashboards/pipeline-components.json

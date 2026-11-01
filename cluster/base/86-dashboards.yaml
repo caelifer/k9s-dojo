@@ -1,6 +1,9 @@
-# Grafana provisioning for the dojo: a dashboard provider, two prebuilt
-# dashboards, and the sidecar that picks up dashboard ConfigMaps from anywhere in
-# the cluster.
+# Grafana provisioning for the dojo: a dashboard provider and the sidecar that
+# picks up dashboard ConfigMaps from anywhere in the cluster.
+#
+# The two prebuilt dashboards are generated from dashboards/*.json by kustomize
+# (see kustomization.yaml), so the files in this repository are the single
+# source of truth -- the same JSON is mounted into the live UI stack under ui/.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -12,18 +15,23 @@ kind: ClusterRole
 metadata:
   name: dojo-grafana-dashboards
 rules:
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    verbs: ["get", "list", "watch"]
+- apiGroups:
+  - ''
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: dojo-grafana-dashboards
 subjects:
-  - kind: ServiceAccount
-    name: grafana-dashboards
-    namespace: observability
+- kind: ServiceAccount
+  name: grafana-dashboards
+  namespace: observability
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -35,247 +43,6 @@ metadata:
   name: grafana-dashboard-provider
   namespace: observability
 data:
-  provider.yaml: |
-    apiVersion: 1
-    providers:
-      - name: dojo
-        folder: Dojo
-        type: file
-        disableDeletion: false
-        allowUiUpdates: true
-        options:
-          path: /var/lib/grafana/dashboards
-          foldersFromFilesStructure: false
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: grafana-dashboard-k8s
-  namespace: observability
-  labels:
-    grafana_dashboard: "1"
-data:
-  k8s-cluster-overview.json: |
-    {
-      "uid": "dojo-k8s-overview",
-      "title": "Kubernetes / Cluster overview",
-      "schemaVersion": 39,
-      "version": 1,
-      "refresh": "30s",
-      "tags": ["dojo", "kubernetes"],
-      "time": {"from": "now-1h", "to": "now"},
-      "templating": {
-        "list": [
-          {
-            "name": "namespace",
-            "label": "Namespace",
-            "type": "query",
-            "datasource": {"type": "prometheus", "uid": "mimir"},
-            "query": "label_values(kube_pod_info, namespace)",
-            "includeAll": true,
-            "multi": true,
-            "current": {"text": "All", "value": "$__all"}
-          }
-        ]
-      },
-      "panels": [
-        {
-          "id": 1,
-          "type": "stat",
-          "title": "Nodes ready",
-          "datasource": {"type": "prometheus", "uid": "mimir"},
-          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
-          "targets": [{"refId": "A", "expr": "count(kube_node_info)"}]
-        },
-        {
-          "id": 2,
-          "type": "stat",
-          "title": "Pods running",
-          "datasource": {"type": "prometheus", "uid": "mimir"},
-          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
-          "targets": [{"refId": "A", "expr": "sum(kube_pod_status_phase{phase=\"Running\", namespace=~\"$namespace\"})"}]
-        },
-        {
-          "id": 3,
-          "type": "stat",
-          "title": "Not ready replicas",
-          "datasource": {"type": "prometheus", "uid": "mimir"},
-          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
-          "targets": [{"refId": "A", "expr": "sum(kube_deployment_status_replicas_unavailable{namespace=~\"$namespace\"})"}]
-        },
-        {
-          "id": 4,
-          "type": "stat",
-          "title": "Restarts (last hour)",
-          "datasource": {"type": "prometheus", "uid": "mimir"},
-          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
-          "targets": [{"refId": "A", "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=~\"$namespace\"}[1h]))"}]
-        },
-        {
-          "id": 5,
-          "type": "timeseries",
-          "title": "Pods by phase",
-          "datasource": {"type": "prometheus", "uid": "mimir"},
-          "gridPos": {"h": 7, "w": 12, "x": 0, "y": 4},
-          "targets": [{"refId": "A", "expr": "sum by (phase) (kube_pod_status_phase{namespace=~\"$namespace\"})", "legendFormat": "{{phase}}"}]
-        },
-        {
-          "id": 6,
-          "type": "timeseries",
-          "title": "Node CPU utilisation",
-          "datasource": {"type": "prometheus", "uid": "mimir"},
-          "gridPos": {"h": 7, "w": 12, "x": 12, "y": 4},
-          "targets": [{"refId": "A", "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)", "legendFormat": "{{instance}}"}]
-        },
-        {
-          "id": 7,
-          "type": "timeseries",
-          "title": "Node memory available",
-          "datasource": {"type": "prometheus", "uid": "mimir"},
-          "gridPos": {"h": 7, "w": 12, "x": 0, "y": 11},
-          "targets": [{"refId": "A", "expr": "node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100", "legendFormat": "{{instance}}"}]
-        },
-        {
-          "id": 8,
-          "type": "timeseries",
-          "title": "Container restarts",
-          "datasource": {"type": "prometheus", "uid": "mimir"},
-          "gridPos": {"h": 7, "w": 12, "x": 12, "y": 11},
-          "targets": [{"refId": "A", "expr": "increase(kube_pod_container_status_restarts_total{namespace=~\"$namespace\"}[15m]) > 0", "legendFormat": "{{namespace}}/{{pod}}/{{container}}"}]
-        },
-        {
-          "id": 9,
-          "type": "logs",
-          "title": "Recent cluster logs",
-          "datasource": {"type": "loki", "uid": "loki"},
-          "gridPos": {"h": 7, "w": 12, "x": 0, "y": 18},
-          "targets": [{"refId": "A", "expr": "{namespace=~\"$namespace\"}"}]
-        },
-        {
-          "id": 10,
-          "type": "traces",
-          "title": "Recent traces",
-          "datasource": {"type": "tempo", "uid": "tempo"},
-          "gridPos": {"h": 7, "w": 12, "x": 12, "y": 18},
-          "targets": [{"refId": "A", "query": "{}"}]
-        }
-      ]
-    }
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: grafana-dashboard-pipeline
-  namespace: observability
-  labels:
-    grafana_dashboard: "1"
-data:
-  pipeline-components.json: |
-    {
-      "uid": "dojo-pipeline-components",
-      "title": "Dojo / Pipeline components",
-      "schemaVersion": 39,
-      "version": 1,
-      "refresh": "30s",
-      "tags": ["dojo", "otel", "pipeline"],
-      "time": {"from": "now-1h", "to": "now"},
-      "templating": {
-        "list": [
-          {
-            "name": "pod",
-            "label": "Collector",
-            "type": "query",
-            "datasource": {"type": "prometheus", "uid": "mimir"},
-            "query": "label_values(otelcol_exporter_sent_spans, pod)",
-            "includeAll": true,
-            "multi": true,
-            "current": {"text": "All", "value": "$__all"}
-          }
-        ]
-      },
-      "panels": [
-        {
-          "id": 1,
-          "type": "stat",
-          "title": "Accepted spans/s",
-          "datasource": {"type": "prometheus", "uid": "mimir"},
-          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
-          "targets": [{"refId": "A", "expr": "sum(rate(otelcol_receiver_accepted_spans{pod=~\"$pod\"}[5m]))"}]
-        },
-        {
-          "id": 2,
-          "type": "stat",
-          "title": "Sent spans/s",
-          "datasource": {"type": "prometheus", "uid": "mimir"},
-          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
-          "targets": [{"refId": "A", "expr": "sum(rate(otelcol_exporter_sent_spans{pod=~\"$pod\"}[5m]))"}]
-        },
-        {
-          "id": 3,
-          "type": "stat",
-          "title": "Exporter queue",
-          "datasource": {"type": "prometheus", "uid": "mimir"},
-          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
-          "targets": [{"refId": "A", "expr": "sum(otelcol_exporter_queue_size{pod=~\"$pod\"})"}]
-        },
-        {
-          "id": 4,
-          "type": "stat",
-          "title": "Dropped spans/min",
-          "datasource": {"type": "prometheus", "uid": "mimir"},
-          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
-          "targets": [{"refId": "A", "expr": "sum(increase(otelcol_exporter_send_failed_spans{pod=~\"$pod\"}[1m]))"}]
-        },
-        {
-          "id": 5,
-          "type": "timeseries",
-          "title": "Ingest vs export per signal",
-          "datasource": {"type": "prometheus", "uid": "mimir"},
-          "gridPos": {"h": 7, "w": 12, "x": 0, "y": 4},
-          "targets": [
-            {"refId": "A", "expr": "sum by (signal) (rate(otelcol_receiver_accepted_spans{pod=~\"$pod\"}[5m]))", "legendFormat": "in {{signal}}"},
-            {"refId": "B", "expr": "sum by (exporter) (rate(otelcol_exporter_sent_spans{pod=~\"$pod\"}[5m]))", "legendFormat": "out {{exporter}}"}
-          ]
-        },
-        {
-          "id": 6,
-          "type": "timeseries",
-          "title": "Per-replica throughput",
-          "datasource": {"type": "prometheus", "uid": "mimir"},
-          "gridPos": {"h": 7, "w": 12, "x": 12, "y": 4},
-          "targets": [{"refId": "A", "expr": "sum by (pod) (rate(otelcol_exporter_sent_spans{pod=~\"$pod\"}[5m]))", "legendFormat": "{{pod}}"}]
-        },
-        {
-          "id": 7,
-          "type": "timeseries",
-          "title": "Backend health (up)",
-          "datasource": {"type": "prometheus", "uid": "mimir"},
-          "gridPos": {"h": 7, "w": 12, "x": 0, "y": 11},
-          "targets": [{"refId": "A", "expr": "up{job=~\"kube-state-metrics|node-exporter\"}", "legendFormat": "{{job}} {{instance}}"}]
-        },
-        {
-          "id": 8,
-          "type": "timeseries",
-          "title": "Generator load",
-          "datasource": {"type": "prometheus", "uid": "mimir"},
-          "gridPos": {"h": 7, "w": 12, "x": 12, "y": 11},
-          "targets": [{"refId": "A", "expr": "sum by (container) (rate(otelcol_receiver_accepted_spans[5m]))", "legendFormat": "{{container}}"}]
-        },
-        {
-          "id": 9,
-          "type": "logs",
-          "title": "Collector logs",
-          "datasource": {"type": "loki", "uid": "loki"},
-          "gridPos": {"h": 7, "w": 12, "x": 0, "y": 18},
-          "targets": [{"refId": "A", "expr": "{namespace=\"pipeline\"}"}]
-        },
-        {
-          "id": 10,
-          "type": "traces",
-          "title": "Traces through the pipeline",
-          "datasource": {"type": "tempo", "uid": "tempo"},
-          "gridPos": {"h": 7, "w": 12, "x": 12, "y": 18},
-          "targets": [{"refId": "A", "query": "{ resource.service.name = \"synthetic-load\" }"}]
-        }
-      ]
-    }
+  provider.yaml: "apiVersion: 1\nproviders:\n  - name: dojo\n    folder: Dojo\n  \
+    \  type: file\n    disableDeletion: false\n    allowUiUpdates: true\n    options:\n\
+    \      path: /var/lib/grafana/dashboards\n      foldersFromFilesStructure: false\n"

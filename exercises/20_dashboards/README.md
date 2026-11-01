@@ -12,8 +12,13 @@ dashboards that answer questions without writing a query.
 | Tempo (trace search, TraceQL) | `tempo.dojo.local` | Ingress `observability/tempo` → `tempo:3200` |
 
 Both are `nginx` Ingresses with TLS entries. There is no ingress controller in
-this cluster, so the objects exist and validate but nothing answers on the host;
-on a real cluster those two hosts are reachable.
+this cluster, so the objects exist and validate but nothing answers on those
+hosts; on a real cluster they are reachable.
+
+For the same dashboards *live*, run `make ui` and open
+`http://localhost:3000` — that stack serves the same JSON from this repository
+(`cluster/base/dashboards/`) with real series from kube-state-metrics,
+node-exporter and the OTLP generators.
 
 ## How dashboards get in
 
