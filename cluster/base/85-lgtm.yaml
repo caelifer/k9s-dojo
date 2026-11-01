@@ -333,7 +333,7 @@ spec:
       serviceAccountName: grafana-dashboards
       containers:
         - name: grafana
-          image: grafana/grafana:11.3.0
+          image: grafana/grafana:13.3.0
           ports:
             - name: http
               containerPort: 3000

@@ -85,7 +85,7 @@ services:
     restart: unless-stopped
 
   grafana:
-    image: docker.io/grafana/grafana:11.3.0
+    image: docker.io/grafana/grafana:13.3.0
     ports:
       - "3000:3000"
     environment:
