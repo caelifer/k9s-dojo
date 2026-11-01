@@ -22,6 +22,13 @@ cleanup() {
   if [[ -d $backup/manifests ]]; then
     cp "$backup"/manifests/*.yaml "$ROOT/exercises/17_pipeline/manifests/" 2>/dev/null
   fi
+  if [[ -d $backup/generators ]]; then
+    local f
+    for f in "$ROOT"/exercises/19_generators/manifests/*.yaml; do
+      [[ -f $backup/generators/$(basename "$f") ]] || rm -f "$f"
+    done
+    cp "$backup"/generators/*.yaml "$ROOT/exercises/19_generators/manifests/" 2>/dev/null
+  fi
   kubectl --context "$CTX_DEV" delete namespace pipeline --wait=false >/dev/null 2>&1
   rm -rf "$backup"
   rm -f "$STATE/completed"
@@ -46,7 +53,12 @@ cp "$ROOT"/exercises/17_pipeline/solution/*.yaml "$ROOT/exercises/17_pipeline/ma
 # exercise 18 supersedes the collector config with the LGTM exporters, so its
 # solution is applied on top of exercise 17's manifests
 cp "$ROOT"/exercises/18_lgtm/solution/*.yaml "$ROOT/exercises/17_pipeline/manifests/"
+# exercise 19 adds the generator workloads in their own directory
+mkdir -p "$backup/generators"
+cp "$ROOT"/exercises/19_generators/manifests/*.yaml "$backup/generators/"
+cp "$ROOT"/exercises/19_generators/solution/*.yaml "$ROOT/exercises/19_generators/manifests/"
 kubectl --context "$CTX_DEV" apply -f "$ROOT/exercises/17_pipeline/manifests/" >/dev/null 2>&1
+kubectl --context "$CTX_DEV" apply -f "$ROOT/exercises/19_generators/manifests/" >/dev/null 2>&1
 
 # 10-12 are graded on live state, so act like a learner
 kubectl --context "$CTX_PROD" -n shop scale deploy frontend --replicas=7 >/dev/null 2>&1

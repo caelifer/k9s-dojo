@@ -1,0 +1,17 @@
+# Exercise 19 -- generate the telemetry
+# Fill in every value after the colon. Leave the key names alone.
+
+# Image the generators run (repository name is enough)
+generator_image:
+
+# Exact OTLP endpoint the generators export to
+otlp_endpoint:
+
+# How many containers each synthetic-load pod has
+generator_containers:
+
+# The CronJob's schedule, as written in the manifest
+cron_schedule:
+
+# Service the generators talk to
+collector_service:

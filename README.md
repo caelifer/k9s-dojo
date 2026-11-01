@@ -1,6 +1,6 @@
 # k9s-dojo
 
-Eighteen exercises for the [k9s](https://k9scli.io) terminal UI, built like
+Nineteen exercises for the [k9s](https://k9scli.io) terminal UI, built like
 [ziglings](https://codeberg.org/ziglings/exercises): numbered exercises you edit,
 a checker that refuses to pass until the work is actually done, and a throwaway
 cluster that `make setup` builds for you.
@@ -119,6 +119,7 @@ templates and the cluster.
 | 16 | Plugins: shell out from k9s | config file + command |
 | 17 | Capstone: build and inspect an observability pipeline | manifests + state |
 | 18 | Capstone: wire the pipeline into the LGTM stack | live config + state |
+| 19 | Capstone: generate application telemetry and collect cluster metrics | manifests + live config |
 
 ## The capstone (exercise 17)
 
@@ -141,6 +142,14 @@ OTLP gRPC, logs to Loki over OTLP/HTTP, and metrics to Mimir over Prometheus
 remote write — three exporters, three pipelines, checked against the live
 ConfigMap. Grafana is already provisioned with those three datasources via the
 `grafana-datasources` ConfigMap, so the collector is the only missing link.
+
+Exercise 19 supplies the data. Two kinds, because a cluster pipeline needs both:
+`telemetrygen` pods that synthesize traces, metrics and logs against the
+collector (one container per signal, plus a CronJob smoke burst), and the
+cluster's own telemetry — kube-state-metrics with the RBAC it needs, and a
+node-exporter DaemonSet with hostPath mounts. The collector learns a `prometheus`
+receiver and scrapes both, so the metrics pipeline goes from
+`receivers: [otlp]` to `receivers: [otlp, prometheus]`.
 
 Grading is a server-side `kubectl apply --dry-run=server` over your files plus
 live assertions on every object, so neither invalid YAML nor a guessed answer
@@ -190,3 +199,5 @@ make tui            # K9S_CONFIG_DIR=$PWD/k9s-config k9s --context aks-dojo-dev
 | exercise 18 says the collector has no config | the `pipeline` namespace is missing: `make apply N=17` first |
 | an exporter endpoint in exercise 18 fails | service DNS is `<svc>.<ns>.svc.cluster.local`, and Loki needs `/otlp` on the path |
 | `node-agent` pods cover only one node | the DaemonSet is missing the `CriticalAddonsOnly` toleration |
+| kube-state-metrics is in `CrashLoopBackOff`/forbidden on a real cluster | the ClusterRole lacks `list`/`watch` on the resource it asks for |
+| exercise 19 says a generator container is missing | `deploy/synthetic-load` needs three containers, one per telemetry signal |

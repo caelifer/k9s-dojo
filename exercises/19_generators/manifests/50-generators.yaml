@@ -1,0 +1,48 @@
+# 50-generators.yaml -- fill in every TODO.
+#
+# Goal: pods whose only job is to generate OTEL telemetry, so the pipeline you
+# built in 17 and wired in 18 has something to carry.
+#
+# telemetrygen is the official OpenTelemetry load generator. One container per
+# signal, because the CLI takes one signal per invocation.
+#
+# Requirements:
+#   - Deployment `synthetic-load`, 2 replicas, selector app: synthetic-load
+#   - three containers in the pod, named traces, metrics and logs
+#   - image ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.115.0
+#   - each container runs the matching subcommand (traces | metrics | logs) with
+#     --otlp-endpoint collector.pipeline.svc.cluster.local:4317,
+#     --otlp-insecure, --rate 5 and --duration 1h
+#   - CronJob `telemetry-smoke`, schedule "*/10 * * * *", same image, one
+#     container named smoke running `traces --traces 5` against the same endpoint
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: synthetic-load
+  namespace: pipeline
+spec:
+  # TODO: replicas, selector, pod template with three containers
+  selector:
+    matchLabels:
+      app: synthetic-load
+  template:
+    metadata:
+      labels:
+        app: synthetic-load
+    spec:
+      containers: []
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: telemetry-smoke
+  namespace: pipeline
+spec:
+  # TODO: schedule, jobTemplate with the telemetrygen smoke run
+  schedule: "0 0 1 1 *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers: []

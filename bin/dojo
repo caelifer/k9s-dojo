@@ -128,6 +128,10 @@ cmd_apply() {
     printf '  exercise %s has no manifests to apply\n' "${1-}" >&2
     return 2
   fi
+  # exercises 18 and 19 extend the pipeline built in 17, so the base goes first
+  if [[ -d $ROOT/exercises/17_pipeline/manifests && $dir != *17_pipeline* ]]; then
+    kubectl apply -f "$ROOT/exercises/17_pipeline/manifests/"
+  fi
   kubectl apply -f "$dir/manifests/"
 }
 

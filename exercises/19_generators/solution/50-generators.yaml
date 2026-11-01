@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: synthetic-load
+  namespace: pipeline
+  labels:
+    app: synthetic-load
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: synthetic-load
+  template:
+    metadata:
+      labels:
+        app: synthetic-load
+        tier: generator
+    spec:
+      containers:
+        - name: traces
+          image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.115.0
+          args:
+            - traces
+            - --otlp-endpoint
+            - collector.pipeline.svc.cluster.local:4317
+            - --otlp-insecure
+            - --rate
+            - "5"
+            - --duration
+            - 1h
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 96Mi
+        - name: metrics
+          image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.115.0
+          args:
+            - metrics
+            - --otlp-endpoint
+            - collector.pipeline.svc.cluster.local:4317
+            - --otlp-insecure
+            - --rate
+            - "5"
+            - --duration
+            - 1h
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 96Mi
+        - name: logs
+          image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.115.0
+          args:
+            - logs
+            - --otlp-endpoint
+            - collector.pipeline.svc.cluster.local:4317
+            - --otlp-insecure
+            - --rate
+            - "5"
+            - --duration
+            - 1h
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 96Mi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: telemetry-smoke
+  namespace: pipeline
+spec:
+  schedule: "*/10 * * * *"
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: smoke
+              image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.115.0
+              args:
+                - traces
+                - --otlp-endpoint
+                - collector.pipeline.svc.cluster.local:4317
+                - --otlp-insecure
+                - --traces
+                - "5"
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  cpu: 100m
+                  memory: 96Mi

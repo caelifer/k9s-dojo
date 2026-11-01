@@ -1,0 +1,37 @@
+# Exercise 19 -- reference answers
+
+generator_image: telemetrygen
+otlp_endpoint: collector.pipeline.svc.cluster.local:4317
+generator_containers: 3
+cron_schedule: */10 * * * *
+collector_service: collector
+ksm_port: 8080
+node_exporter_port: 9100
+node_exporter_workload: node-exporter
+
+# Finished manifests:
+#   exercises/19_generators/solution/50-generators.yaml        (synthetic load)
+#   exercises/19_generators/solution/60-cluster-telemetry.yaml (ksm + node-exporter)
+#   exercises/19_generators/solution/10-collector.yaml         (collector config)
+#
+# Copy the collector config over the one from exercise 17, then:
+#   cp exercises/19_generators/solution/10-collector.yaml \
+#      exercises/17_pipeline/manifests/10-collector.yaml
+#   make apply N=17 && make apply N=19
+#
+# Notes
+# - telemetrygen takes one signal per invocation, so the pod runs three
+#   containers: traces, metrics, logs. They fail independently, which is exactly
+#   what the per-container RESTARTS column in `:pod` is for.
+# - `--otlp-insecure` is required in-cluster because the collector terminates
+#   plaintext on 4317; `--duration 1h` plus the restart policy keeps load on.
+# - Cluster telemetry is two different problems: kube-state-metrics turns API
+#   objects into metrics (needs RBAC: list/watch on pods, nodes, workloads), and
+#   node-exporter turns host counters into metrics (needs hostPath mounts and a
+#   toleration for every taint, or the system pool is invisible).
+# - The collector needs a `prometheus` receiver for both, and the metrics
+#   pipeline must list both receivers: `receivers: [otlp, prometheus]`.
+# - On this simulated cluster no pod actually runs, so nothing lands in
+#   Loki/Tempo/Mimir. On a real cluster the checks that matter are
+#   `kubectl -n pipeline logs deploy/kube-state-metrics` for a successful scrape
+#   and the `up` metric in Grafana's Mimir datasource.
