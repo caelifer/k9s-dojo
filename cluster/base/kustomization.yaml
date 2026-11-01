@@ -10,3 +10,4 @@ resources:
   - 60-storage.yaml
   - 70-statefulset.yaml
   - 80-ingress.yaml
+  - 85-lgtm.yaml

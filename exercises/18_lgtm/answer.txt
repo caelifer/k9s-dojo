@@ -1,0 +1,23 @@
+# Exercise 18 -- wire the pipeline into LGTM
+# Fill in every value after the colon. Leave the key names alone.
+
+# Namespace that holds Loki, Tempo, Mimir and Grafana
+lgtm_namespace:
+
+# Port Tempo accepts OTLP gRPC on
+tempo_otlp_port:
+
+# Port Loki's HTTP API listens on
+loki_port:
+
+# Port Mimir exposes for remote writes
+mimir_port:
+
+# Number of StatefulSets in the observability namespace
+lgtm_statefulsets:
+
+# Number of datasources Grafana is provisioned with
+datasource_count:
+
+# Host the Grafana Ingress routes
+grafana_host:

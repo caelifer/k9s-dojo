@@ -1,4 +1,5 @@
-# Static volumes for the stateful workloads. A real cluster gets these from a
+# Static volumes for the stateful workloads: the storefront database, the LGTM
+# backends and whatever the capstone builds. A real cluster gets these from a
 # CSI driver; the simulated one has none, so the claims are satisfied by hand.
 apiVersion: v1
 kind: PersistentVolume
@@ -59,3 +60,63 @@ spec:
   storageClassName: manual
   hostPath:
     path: /var/lib/dojo/pv-data-3
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-data-4
+  labels:
+    dojo.azure/pool: data
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes: ["ReadWriteOnce"]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: manual
+  hostPath:
+    path: /var/lib/dojo/pv-data-4
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-data-5
+  labels:
+    dojo.azure/pool: data
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes: ["ReadWriteOnce"]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: manual
+  hostPath:
+    path: /var/lib/dojo/pv-data-5
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-data-6
+  labels:
+    dojo.azure/pool: data
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes: ["ReadWriteOnce"]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: manual
+  hostPath:
+    path: /var/lib/dojo/pv-data-6
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-data-7
+  labels:
+    dojo.azure/pool: data
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes: ["ReadWriteOnce"]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: manual
+  hostPath:
+    path: /var/lib/dojo/pv-data-7

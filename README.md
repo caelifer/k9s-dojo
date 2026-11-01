@@ -1,6 +1,6 @@
 # k9s-dojo
 
-Seventeen exercises for the [k9s](https://k9scli.io) terminal UI, built like
+Eighteen exercises for the [k9s](https://k9scli.io) terminal UI, built like
 [ziglings](https://codeberg.org/ziglings/exercises): numbered exercises you edit,
 a checker that refuses to pass until the work is actually done, and a throwaway
 cluster that `make setup` builds for you.
@@ -52,7 +52,13 @@ make list      # progress through all sixteen
 | `shop` workloads | frontend ×3, frontend-canary, redis, checkout-api ×2, worker, batch-renderer | frontend ×5, redis, checkout-api ×2, worker, batch-renderer |
 | Stateful workload | `payments/storefront-db` StatefulSet, 2 replicas, one bound PVC each | same |
 | Edge | `shop/shop-edge` Ingress, host `shop.dojo.local`, TLS | same |
+| Observability | `observability` namespace: Loki, Tempo, Mimir StatefulSets, Grafana + Grafana Ingress | same |
 | Broken on purpose | checkout-api (ImagePullBackOff), worker (CrashLoopBackOff), batch-renderer (Pending/unschedulable) | same |
+
+The LGTM stack (Loki for logs, Tempo for traces, Mimir for metrics, Grafana on
+top) is seeded because it is the consumer the capstone wires into: the exercise
+is to make your collector feed all three backends, which each speak a different
+protocol.
 
 Everything else is normal Kubernetes: a ResourceQuota and LimitRange per
 namespace, a ServiceAccount plus Role and RoleBinding in `shop`, coredns,
@@ -112,6 +118,7 @@ templates and the cluster.
 | 15 | Skins | config file |
 | 16 | Plugins: shell out from k9s | config file + command |
 | 17 | Capstone: build and inspect an observability pipeline | manifests + state |
+| 18 | Capstone: wire the pipeline into the LGTM stack | live config + state |
 
 ## The capstone (exercise 17)
 
@@ -127,6 +134,13 @@ You write the manifests yourself — `exercises/17_pipeline/manifests/` ships
 three files full of `TODO`s and one complete file — apply them with
 `make apply N=17`, watch the objects appear in k9s, and then answer inspection
 questions from `:sts`, `:pvc`, `:svc`, `:ing`, `:hpa` and `:ds`.
+
+Exercise 18 closes the loop: the same cluster runs an LGTM stack in the
+`observability` namespace, and your collector has to export traces to Tempo over
+OTLP gRPC, logs to Loki over OTLP/HTTP, and metrics to Mimir over Prometheus
+remote write — three exporters, three pipelines, checked against the live
+ConfigMap. Grafana is already provisioned with those three datasources via the
+`grafana-datasources` ConfigMap, so the collector is the only missing link.
 
 Grading is a server-side `kubectl apply --dry-run=server` over your files plus
 live assertions on every object, so neither invalid YAML nor a guessed answer
@@ -173,4 +187,6 @@ make tui            # K9S_CONFIG_DIR=$PWD/k9s-config k9s --context aks-dojo-dev
 | `no such exercise: 5` | ids are two digits: `make check N=05` |
 | plugins or skins do nothing | k9s was started without `make tui`, so `K9S_CONFIG_DIR` is unset |
 | claims in exercise 17 stay Pending | `storageClassName` is not `manual`, so no static PV can match |
+| exercise 18 says the collector has no config | the `pipeline` namespace is missing: `make apply N=17` first |
+| an exporter endpoint in exercise 18 fails | service DNS is `<svc>.<ns>.svc.cluster.local`, and Loki needs `/otlp` on the path |
 | `node-agent` pods cover only one node | the DaemonSet is missing the `CriticalAddonsOnly` toleration |

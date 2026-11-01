@@ -43,6 +43,9 @@ done
 mkdir -p "$backup/manifests"
 cp "$ROOT"/exercises/17_pipeline/manifests/*.yaml "$backup/manifests/"
 cp "$ROOT"/exercises/17_pipeline/solution/*.yaml "$ROOT/exercises/17_pipeline/manifests/"
+# exercise 18 supersedes the collector config with the LGTM exporters, so its
+# solution is applied on top of exercise 17's manifests
+cp "$ROOT"/exercises/18_lgtm/solution/*.yaml "$ROOT/exercises/17_pipeline/manifests/"
 kubectl --context "$CTX_DEV" apply -f "$ROOT/exercises/17_pipeline/manifests/" >/dev/null 2>&1
 
 # 10-12 are graded on live state, so act like a learner

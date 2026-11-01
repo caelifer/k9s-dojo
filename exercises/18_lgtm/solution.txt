@@ -1,0 +1,30 @@
+# Exercise 18 -- reference answers
+
+lgtm_namespace: observability
+tempo_otlp_port: 4317
+loki_port: 3100
+mimir_port: 9009
+lgtm_statefulsets: 3
+datasource_count: 3
+grafana_host: grafana.dojo.local
+
+# The finished collector manifest is exercises/18_lgtm/solution/10-collector.yaml.
+# Copy it over the file you wrote in exercise 17 and re-apply:
+#
+#   cp exercises/18_lgtm/solution/10-collector.yaml \
+#      exercises/17_pipeline/manifests/10-collector.yaml
+#   make apply N=17
+#
+# Notes
+# - One exporter per signal, because the three backends speak differently:
+#   Tempo wants OTLP gRPC on 4317, Loki wants OTLP/HTTP at /otlp on 3100, Mimir
+#   wants Prometheus remote write on 9009/api/v1/push.
+# - `tls.insecure: true` on the Tempo exporter is what keeps a plaintext gRPC
+#   connection to an in-cluster endpoint from failing on certificate checks.
+# - memory_limiter goes first in every pipeline: it drops data instead of
+#   letting the collector OOM, which is the failure mode that hurts most when
+#   the backend holds back.
+# - Grafana reads `grafana-datasources` from `observability` and is already
+#   provisioned with all three; the collector is the only missing link.
+# - `:ep -n observability` shows the headless endpoints for loki/tempo/mimir, so
+#   you can confirm DNS resolves to the pod before blaming the config.
