@@ -1,0 +1,17 @@
+# Exercise 03 -- views
+# Fill in every value after the colon. Leave the key names alone.
+
+# frontend: desired replicas in aks-dojo-dev
+frontend_replicas:
+
+# frontend: container image with its tag
+frontend_image:
+
+# The Service that exposes the frontend on a node port
+nodeport_service:
+
+# That node port
+nodeport:
+
+# The port the redis Service maps to
+redis_service_port:

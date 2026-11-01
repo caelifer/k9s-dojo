@@ -1,0 +1,27 @@
+# Exercise 15 -- reference answers
+
+skin_name: dojo
+body_bg: "#1e1e2e"
+config_key: k9s.ui.skin
+
+# k9s-config/skins/dojo.yaml
+#   k9s:
+#     body:
+#       bgColor: "#1e1e2e"
+#       fgColor: "#cdd6f4"
+#     frame:
+#       border:
+#         fgColor: "#89b4fa"
+#
+# k9s-config/config.yaml
+#   k9s:
+#     ui:
+#       skin: dojo
+#
+# Notes
+# - Colours are quoted strings; unquoted #1e1e2e would parse as a YAML comment.
+# - `k9s --invert` flips light/dark without touching the file; `--crumbsless`,
+#   `--headless` and `--logoless` trim the chrome if a skin still feels busy.
+# - A bad skin file does not stop k9s: it logs the error and falls back to the
+#   default look, which is why the check validates the YAML rather than the
+#   screen.

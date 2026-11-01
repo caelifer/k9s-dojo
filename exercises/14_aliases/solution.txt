@@ -1,0 +1,19 @@
+# Exercise 14 -- reference answers
+
+alias_name: rq
+alias_target: resourcequotas
+rq_works: yes
+
+# aliases.yaml after the exercise:
+#   aliases:
+#     pp: pods
+#     dd: deployments
+#     rq: resourcequotas
+#     lr: limitranges
+#
+# Notes
+# - Aliases only exist in command mode; they do not create new views or change
+#   columns. For that, `views.yaml` is the file.
+# - `k9s info` prints the config dir, the alias file, plugins and skins paths, so
+#   it doubles as a check that K9S_CONFIG_DIR was picked up.
+# - Restart k9s after editing: aliases are read at start-up.

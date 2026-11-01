@@ -1,0 +1,17 @@
+# Exercise 08 -- reference answers
+
+dev_node_count: 2
+userpool_instance_type: Standard_D4s_v5
+systempool_zone: 1
+systempool_taint_key: CriticalAddonsOnly
+region: westeurope
+
+# Notes
+# - `:no` lists nodes; `<ctrl-w>` adds the wide columns where pool, zone and
+#   instance type live. `<shift-o>` sorts by the highlighted one.
+# - The system pool carries `CriticalAddonsOnly:NoSchedule`. Apps without a
+#   matching toleration only ever land on the user pool, which is why
+#   `systempool` nodes look empty in `:pod -A` apart from DaemonSet pods.
+# - Zone `1` is a plain string in the label; k9s prints it as `1`.
+# - `topology.kubernetes.io/region` is `westeurope` for both nodes, matching the
+#   `MC_rg-dojo-dev-weu_aks-dojo-dev_westeurope` resource group label.

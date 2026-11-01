@@ -1,0 +1,7 @@
+k9s:
+  body:
+    bgColor: "#1e1e2e"
+    fgColor: "#cdd6f4"
+  frame:
+    border:
+      fgColor: "#89b4fa"

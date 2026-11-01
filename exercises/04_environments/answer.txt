@@ -1,0 +1,14 @@
+# Exercise 04 -- environments
+# Fill in every value after the colon. Leave the key names alone.
+
+# aks-dojo-dev, deployment frontend: desired replicas
+dev_frontend_replicas:
+
+# aks-dojo-prod, deployment frontend: desired replicas
+prod_frontend_replicas:
+
+# Namespace that exists on prod only
+prod_only_namespace:
+
+# aks-dojo-dev: image of the frontend-canary deployment
+dev_canary_image:

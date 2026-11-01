@@ -1,0 +1,14 @@
+# Exercise 09 -- RBAC
+# Fill in every value after the colon. Leave the key names alone.
+
+# ServiceAccount the shop pods are told to use (spec.serviceAccountName)
+service_account:
+
+# Role that grants it pod read access
+role_name:
+
+# Namespace that Role lives in
+role_namespace:
+
+# Command-mode name for the grouped RBAC view
+rbac_command:

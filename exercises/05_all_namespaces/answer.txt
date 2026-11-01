@@ -1,0 +1,14 @@
+# Exercise 05 -- all namespaces
+# Fill in every value after the colon. Leave the key names alone.
+
+# The key that toggles all namespaces in a view
+all_namespaces_key:
+
+# Namespace with the most Deployments in aks-dojo-dev
+namespace_with_most_deployments:
+
+# aks-dojo-dev kube-system: desired coredns replicas
+coredns_replicas:
+
+# aks-dojo-dev kube-system: number of DaemonSets
+kube_system_daemonsets:

@@ -1,0 +1,245 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shop-config
+  namespace: shop
+data:
+  DATASOURCE_URL: jdbc:postgresql://postgres.shop.svc:5432/shop
+  FEATURE_CHECKOUT: "on"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: shop-secret
+  namespace: shop
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: dojo-s3cr3t
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: shop
+  labels:
+    app: frontend
+    tier: web
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+        tier: web
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+          envFrom:
+            - configMapRef:
+                name: shop-config
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: shop
+spec:
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-nodeport
+  namespace: shop
+spec:
+  type: NodePort
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: shop
+  labels:
+    app: redis
+    tier: cache
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+        tier: cache
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: shop
+spec:
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout-api
+  namespace: shop
+  labels:
+    app: checkout-api
+    tier: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: checkout-api
+  template:
+    metadata:
+      labels:
+        app: checkout-api
+        tier: api
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/k9s-dojo/checkout-api:1.4.2
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: shop-config
+                  key: DATASOURCE_URL
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: shop
+  labels:
+    app: worker
+    tier: batch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+        tier: batch
+    spec:
+      containers:
+        - name: worker
+          image: alpine:3.20
+          command: ["sh", "-c"]
+          args:
+            - "echo 'worker: polling queue'; sleep 1; echo 'worker: queue not reachable'; exit 1"
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: batch-renderer
+  namespace: shop
+  labels:
+    app: batch-renderer
+    tier: batch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: batch-renderer
+  template:
+    metadata:
+      labels:
+        app: batch-renderer
+        tier: batch
+    spec:
+      containers:
+        - name: renderer
+          image: alpine:3.20
+          command: ["sh", "-c", "sleep 3600"]
+          resources:
+            requests:
+              cpu: 500m
+              memory: 32Gi
+            limits:
+              cpu: "1"
+              memory: 40Gi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dojo-deployer
+  namespace: shop
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-reader
+  namespace: shop
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pod-reader
+  namespace: shop
+subjects:
+  - kind: ServiceAccount
+    name: dojo-deployer
+    namespace: shop
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io

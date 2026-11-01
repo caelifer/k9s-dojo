@@ -1,0 +1,14 @@
+# Exercise 01 -- reference answers
+
+dojo_namespaces: 3
+ledger_namespace: payments
+contexts_command: ctx
+warp_key: w
+
+# Notes
+# - `:ns` lists seven namespaces per cluster; `shop`, `payments` and `ops` are
+#   the dojo's, the rest belong to the cluster itself.
+# - `:ctx` is the contexts view. The context you launched with is highlighted;
+#   `<enter>` on another one switches to it without leaving k9s.
+# - `<w>` opens a namespace picker from any namespaced view, which is faster
+#   than going back to the namespaces view first.

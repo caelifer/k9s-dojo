@@ -1,0 +1,11 @@
+# Exercise 14 -- aliases
+# Fill in every value after the colon. Leave the key names alone.
+
+# The alias you added for resourcequotas
+alias_name:
+
+# The resource it expands to
+alias_target:
+
+# Does :rq open the quota view in the shop namespace? yes or no
+rq_works:

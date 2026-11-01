@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ledger-secret
+  namespace: payments
+type: Opaque
+stringData:
+  LEDGER_TOKEN: dojo-ledger-token
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ledger
+  namespace: payments
+  labels:
+    app: ledger
+    tier: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ledger
+  template:
+    metadata:
+      labels:
+        app: ledger
+        tier: api
+    spec:
+      containers:
+        - name: ledger
+          image: alpine:3.20
+          command: ["sh", "-c", "sleep infinity"]
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: ledger-secret
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ledger
+  namespace: payments
+spec:
+  selector:
+    app: ledger
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nightly-report
+  namespace: payments
+spec:
+  schedule: "*/5 * * * *"
+  successfulJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: report
+              image: busybox:1.37
+              command: ["sh", "-c", "date; echo 'nightly report: 0 disputes'"]
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 16Mi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migrate-once
+  namespace: payments
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: busybox:1.37
+          command: ["sh", "-c", "sleep 2; echo 'schema migrated'"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi

@@ -1,0 +1,163 @@
+#!/usr/bin/env bash
+# bin/dojo -- exercise runner: list, next, check, solution, edit, progress.
+set -uo pipefail
+
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+PROGRESS="$ROOT/.dojo/completed"
+
+c_reset=$'\033[0m'
+c_bold=$'\033[1m'
+c_dim=$'\033[2m'
+c_ok=$'\033[32m'
+c_bad=$'\033[31m'
+c_hi=$'\033[36m'
+
+exercise_dirs() { ls -d "$ROOT"/exercises/[0-9]*/ 2>/dev/null | sort; }
+ex_id() { basename "${1%/}" | cut -d_ -f1; }
+ex_topic() { basename "${1%/}" | cut -d_ -f2- | tr '_' ' '; }
+
+done_ids() { [[ -r $PROGRESS ]] && sed -n 's/[[:space:]]//gp' "$PROGRESS"; }
+
+is_done() { done_ids | grep -qx "$1"; }
+
+mark_done() {
+  mkdir -p "$(dirname "$PROGRESS")"
+  is_done "$1" || printf '%s\n' "$1" >>"$PROGRESS"
+}
+
+dir_for() {
+  local want=${1-} d
+  [[ -n $want ]] || return 1
+  if [[ $want =~ ^[0-9]+$ ]]; then
+    want=$(printf '%02d' "$((10#$want))")
+  fi
+  for d in $(exercise_dirs); do
+    [[ $(ex_id "$d") == "$want" ]] && {
+      printf '%s' "$d"
+      return 0
+    }
+  done
+  return 1
+}
+
+cmd_list() {
+  local d id status total=0 done=0
+  printf '\n  %s%-5s  %-9s  %-46s%s\n' "$c_bold" "NO" "STATUS" "TOPIC" "$c_reset"
+  for d in $(exercise_dirs); do
+    id=$(ex_id "$d")
+    total=$((total + 1))
+    if is_done "$id"; then
+      status="${c_ok}done${c_reset}    "
+      done=$((done + 1))
+    else
+      status="${c_dim}pending${c_reset} "
+    fi
+    printf '  %-5s  %b  %-46s\n' "$id" "$status" "$(ex_topic "$d")"
+  done
+  printf '\n  %d of %d complete\n\n' "$done" "$total"
+}
+
+cmd_next() {
+  local d id
+  for d in $(exercise_dirs); do
+    id=$(ex_id "$d")
+    if ! is_done "$id"; then
+      printf '\n  %s-> exercise %s: %s%s\n\n' "$c_hi" "$id" "$(ex_topic "$d")" "$c_reset"
+      printf '  read:  %s\n' "${d#"$ROOT"/}README.md"
+      printf '  edit:  %s\n' "${d#"$ROOT"/}answer.txt"
+      printf '  check: make check N=%s\n\n' "$id"
+      return 0
+    fi
+  done
+  printf '\n  every exercise is complete. %s\n\n' "Delete .dojo/completed to start over."
+}
+
+run_one() {
+  local dir=$1 id check
+  id=$(ex_id "$dir")
+  check="$dir/check.sh"
+  printf '\n%s=== exercise %s: %s%s\n' "$c_bold" "$id" "$(ex_topic "$dir")" "$c_reset"
+  if [[ ! -x $check ]]; then
+    printf '  %smissing %s%s\n' "$c_bad" "${check#"$ROOT"/}" "$c_reset"
+    return 1
+  fi
+  EX_DIR=$dir "$check"
+  local rc=$?
+  if ((rc == 0)); then
+    mark_done "$id"
+    printf '  %s-> exercise %s complete%s\n' "$c_ok" "$id" "$c_reset"
+  fi
+  return $rc
+}
+
+cmd_check() {
+  local target=${1-} dir rc=0
+  if [[ -z $target ]]; then
+    for dir in $(exercise_dirs); do
+      if ! is_done "$(ex_id "$dir")"; then
+        target=$(ex_id "$dir")
+        break
+      fi
+    done
+    [[ -n $target ]] || {
+      printf '\n  nothing left to check. %s\n\n' "$(cmd_list >/dev/null; printf 'run make list')"
+      return 0
+    }
+  fi
+  if [[ $target == all ]]; then
+    for dir in $(exercise_dirs); do
+      run_one "$dir" || rc=1
+    done
+    return $rc
+  fi
+  dir_for "$target" >/dev/null || {
+    printf '  no such exercise: %s\n' "$target" >&2
+    return 2
+  }
+  run_one "$(dir_for "$target")" || rc=$?
+  return $rc
+}
+
+cmd_solution() {
+  local target=${1-} dir
+  dir=$(dir_for "$target") || {
+    printf '  no such exercise: %s\n' "$target" >&2
+    return 2
+  }
+  if [[ -r $dir/solution.txt ]]; then
+    printf '\n'
+    sed 's/^/  /' "$dir/solution.txt"
+    printf '\n'
+  else
+    printf '  exercise %s is graded on cluster state; there is no answer file.\n\n' "$target"
+  fi
+}
+
+cmd_edit() {
+  local dir
+  dir=$(dir_for "${1-}") || {
+    printf '  no such exercise: %s\n' "${1-}" >&2
+    return 2
+  }
+  exec "${EDITOR:-vi}" "$dir/answer.txt"
+}
+
+cmd_progress() {
+  local total done
+  total=$(exercise_dirs | wc -l)
+  done=$(done_ids | sort -u | wc -l)
+  printf '\n  exercises: %d of %d complete\n\n' "$done" "$total"
+}
+
+case "${1-}" in
+list) cmd_list ;;
+next) cmd_next ;;
+check) shift; cmd_check "${1-}" ;;
+solution) shift; cmd_solution "${1-}" ;;
+edit) shift; cmd_edit "${1-}" ;;
+progress) cmd_progress ;;
+*)
+  printf 'usage: dojo {list|next|check [NN|all]|solution NN|edit NN|progress}\n' >&2
+  exit 2
+  ;;
+esac

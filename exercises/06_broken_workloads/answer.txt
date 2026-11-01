@@ -1,0 +1,17 @@
+# Exercise 06 -- broken workloads
+# Fill in every value after the colon. Leave the key names alone.
+
+# STATUS of the checkout-api pods, exactly as k9s prints it
+checkout_api_status:
+
+# STATUS of the worker pod
+worker_status:
+
+# RESTARTS of the worker pod (any positive number passes)
+worker_restarts:
+
+# STATUS of the batch-renderer pod
+batch_renderer_status:
+
+# Memory batch-renderer requests, as written in its spec
+batch_renderer_memory:

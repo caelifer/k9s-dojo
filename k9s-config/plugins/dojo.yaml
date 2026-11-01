@@ -1,0 +1,15 @@
+plugins:
+  dojo-batch:
+    shortCut: Shift-B
+    description: Batch pods in shop
+    scopes:
+      - pods
+    command: kubectl
+    background: false
+    args:
+      - get
+      - pods
+      - --namespace
+      - shop
+      - --selector
+      - tier=batch

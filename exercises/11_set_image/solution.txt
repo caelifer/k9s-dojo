@@ -1,0 +1,13 @@
+# Exercise 11 -- reference answers
+
+image_key: i
+redis_image: redis:7.4-alpine
+
+# Notes
+# - `<i>` prompts for the image of the selected container and patches the pod.
+#   The kubelet pulls it and restarts the container in place; the pod is not
+#   recreated, so a `RESTARTS` bump and no new pod name is what you should see.
+# - `<r>` on a Deployment is the better answer when you want the whole
+#   ReplicaSet to pick up a template change; `<i>` is for "this one pod, now".
+# - On the simulated kwok cluster the spec changes but no container restarts,
+#   because there is no kubelet to act on it.

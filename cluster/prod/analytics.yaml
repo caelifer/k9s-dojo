@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: analytics
+  labels:
+    team: data
+    dojo.azure/environment: workload
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reporter
+  namespace: analytics
+  labels:
+    app: reporter
+    tier: batch
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: reporter
+  template:
+    metadata:
+      labels:
+        app: reporter
+        tier: batch
+    spec:
+      containers:
+        - name: reporter
+          image: mcr.microsoft.com/oss/kubernetes/pause:3.9
+          command: ["sh", "-c", "sleep infinity"]
+          resources:
+            requests:
+              cpu: 30m
+              memory: 64Mi

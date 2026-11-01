@@ -1,0 +1,15 @@
+# Exercise 09 -- reference answers
+
+service_account: dojo-deployer
+role_name: pod-reader
+role_namespace: shop
+rbac_command: rbac
+
+# Notes
+# - `metrics-agent` sets `spec.serviceAccountName: dojo-deployer`; without that
+#   field every pod silently runs as `default`, which is the usual cause of
+#   "forbidden" errors in a new namespace.
+# - `pod-reader` grants get/list/watch on pods and pods/log in `shop`, and the
+#   RoleBinding is what connects the two.
+# - `:rbac` is a k9s grouping of ServiceAccounts, Roles, RoleBindings and their
+#   cluster-scoped siblings; each also has its own view (`:sa`, `:role`).

@@ -1,0 +1,14 @@
+# Exercise 13 -- filter and mark
+# Fill in every value after the colon. Leave the key names alone.
+
+# The key that enters filter mode
+filter_key:
+
+# Rows left after filtering on "worker"
+worker_rows:
+
+# The key that toggles wide columns
+wide_key:
+
+# Name one column that only appears in wide mode
+extra_column:

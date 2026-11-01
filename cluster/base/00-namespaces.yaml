@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shop
+  labels:
+    team: commerce
+    dojo.azure/environment: workload
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: payments
+  labels:
+    team: finance
+    dojo.azure/environment: workload
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ops
+  labels:
+    team: platform
+    dojo.azure/environment: platform

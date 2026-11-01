@@ -1,0 +1,8 @@
+# Exercise 11 -- set image
+# Fill in every value after the colon. Leave the key names alone.
+
+# The key that changes a container image in place
+image_key:
+
+# The image you set on the redis pod
+redis_image:

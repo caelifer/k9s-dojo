@@ -1,0 +1,15 @@
+# Exercise 05 -- reference answers
+
+all_namespaces_key: 0
+namespace_with_most_deployments: shop
+coredns_replicas: 2
+kube_system_daemonsets: 2
+
+# Notes
+# - `0` toggles all namespaces; press it again to go back. `:all` does the same
+#   thing from command mode, and `k9s -A` starts in that mode.
+# - With all namespaces on, `shop` shows six deployments: frontend,
+#   frontend-canary, redis, checkout-api, worker, batch-renderer.
+# - `kube-system` holds one Deployment (coredns, 2 replicas) and two
+#   DaemonSets (kube-proxy, csi-azuredisk-node), which produce one pod per node,
+#   so two pods each on this two-node cluster.

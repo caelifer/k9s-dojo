@@ -1,0 +1,15 @@
+# Exercise 02 -- reference answers
+
+dev_user: clusterUser_rg-dojo-dev-weu_aks-dojo-dev
+prod_resource_group: rg-dojo-prod-weu
+dev_subscription: 8f2c1d34-0000-4b2a-9c1e-000000000001
+arm_id_annotation: aks.azure.com/arm-id
+
+# Notes
+# - `:ctx` shows one row per context with its cluster and user columns; the
+#   active one is marked. `<enter>` switches, and the header changes with it.
+# - AKS writes cluster credentials as `clusterUser_<rg>_<cluster>`; the resource
+#   group is the middle field of that name.
+# - The subscription id is only inside the node annotation, which is why `d` on
+#   a node is the fastest way to answer "which subscription is this?".
+# - `kubectl config get-contexts` is the non-TUI equivalent of `:ctx`.

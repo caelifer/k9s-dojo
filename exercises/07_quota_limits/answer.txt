@@ -1,0 +1,14 @@
+# Exercise 07 -- quotas and limits
+# Fill in every value after the colon. Leave the key names alone.
+
+# Pod cap in the shop ResourceQuota
+quota_pods:
+
+# requests.cpu cap in that quota, as a plain number
+quota_requests_cpu:
+
+# Default CPU limit injected by the LimitRange
+default_cpu_limit:
+
+# Command-mode name for the ResourceQuota view
+quota_command:

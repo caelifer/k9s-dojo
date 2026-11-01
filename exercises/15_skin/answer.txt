@@ -1,0 +1,11 @@
+# Exercise 15 -- skin
+# Fill in every value after the colon. Leave the key names alone.
+
+# Name of the skin file you created (without .yaml)
+skin_name:
+
+# The body background colour you set
+body_bg:
+
+# The config key that selects it (dotted path)
+config_key:

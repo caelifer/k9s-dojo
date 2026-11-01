@@ -1,0 +1,31 @@
+# Exercise 16 -- reference answers
+
+plugin_name: dojo-batch
+plugin_shortcut: Shift-B
+plugin_pod_count: 2
+
+# k9s-config/plugins/dojo.yaml
+#   plugins:
+#     dojo-batch:
+#       shortCut: Shift-B
+#       description: Batch pods in shop
+#       scopes:
+#         - pods
+#       command: kubectl
+#       background: false
+#       args:
+#         - get
+#         - pods
+#         - --namespace
+#         - shop
+#         - --selector
+#         - tier=batch
+#
+# Notes
+# - `scopes` is what limits the key to pods; without it the plugin shows up in
+#   every view, which is how people end up with a plugin that runs a namespaced
+#   command from a node view.
+# - Placeholders like `$NAMESPACE`, `$NAME` and `$CONTEXT` are substituted from
+#   the current selection, so the same plugin can follow whatever you have open.
+# - If a plugin does nothing, run its `command` with `args` by hand first: k9s
+#   hides stdout until the command finishes unless `background: true`.

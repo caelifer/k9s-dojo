@@ -1,0 +1,15 @@
+# Exercise 03 -- reference answers
+
+frontend_replicas: 3
+frontend_image: nginx:1.27-alpine
+nodeport_service: frontend-nodeport
+nodeport: 30080
+redis_service_port: 6379
+
+# Notes
+# - `:deploy` shows 3/3 under READY. `<d>` on the row prints the pod template,
+#   including the image and the resource requests the pods will carry.
+# - `:svc` shows two frontend services: `frontend` (ClusterIP) and
+#   `frontend-nodeport` (NodePort 30080).
+# - redis is ClusterIP on 6379, which is exactly what `redis:6379` inside a pod
+#   resolves to, the same DNS form the shop configmap uses for postgres.

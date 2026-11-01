@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coredns
+  namespace: kube-system
+  labels:
+    k8s-app: kube-dns
+    kubernetes.io/name: CoreDNS
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      k8s-app: kube-dns
+  template:
+    metadata:
+      labels:
+        k8s-app: kube-dns
+        kubernetes.io/name: CoreDNS
+    spec:
+      priorityClassName: system-cluster-critical
+      tolerations:
+        - key: CriticalAddonsOnly
+          operator: Exists
+      containers:
+        - name: coredns
+          image: mcr.microsoft.com/oss/kubernetes/coredns:v1.11.3
+          args: ["-conf", "/etc/coredns/Corefile"]
+          ports:
+            - containerPort: 53
+              name: dns
+              protocol: UDP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 70Mi
+            limits:
+              memory: 500Mi
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kube-proxy
+  namespace: kube-system
+  labels:
+    k8s-app: kube-proxy
+spec:
+  selector:
+    matchLabels:
+      k8s-app: kube-proxy
+  template:
+    metadata:
+      labels:
+        k8s-app: kube-proxy
+    spec:
+      priorityClassName: system-node-critical
+      tolerations:
+        - key: CriticalAddonsOnly
+          operator: Exists
+        - operator: Exists
+      containers:
+        - name: kube-proxy
+          image: mcr.microsoft.com/oss/kubernetes/kube-proxy:v1.30.9
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: csi-azuredisk-node
+  namespace: kube-system
+  labels:
+    k8s-app: csi-azuredisk-node
+spec:
+  selector:
+    matchLabels:
+      app: csi-azuredisk-node
+  template:
+    metadata:
+      labels:
+        app: csi-azuredisk-node
+    spec:
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: azuredisk
+          image: mcr.microsoft.com/oss/kubernetes-csi/azuredisk-csi:v1.30.3
+          args: ["--endpoint=$(CSI_ENDPOINT)"]
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi

@@ -1,0 +1,16 @@
+# Exercise 13 -- reference answers
+
+filter_key: /
+worker_rows: 1
+wide_key: ctrl-w
+extra_column: IP
+
+# Notes
+# - `/` filters the rendered rows, so status, image tag and age are all
+#   searchable without remembering field names. `<esc>` clears it.
+# - Filter mode is also where k9s accepts `-f`/`-l` style selectors in some
+#   versions; typing `?` while the filter bar is open lists what your build
+#   supports.
+# - `<ctrl-w>` adds IP, NODE and the readiness columns; it is sticky per view.
+# - `<space>` marks rows so that an action applies to the marked set rather than
+#   to the row under the cursor; `<ctrl-\\>` clears the marks.

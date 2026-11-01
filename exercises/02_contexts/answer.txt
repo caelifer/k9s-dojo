@@ -1,0 +1,14 @@
+# Exercise 02 -- contexts
+# Fill in every value after the colon. Leave the key names alone.
+
+# User the aks-dojo-dev context authenticates as (copy it exactly)
+dev_user:
+
+# Resource group of the prod context
+prod_resource_group:
+
+# Subscription id inside the dev ARM id annotation
+dev_subscription:
+
+# Annotation key holding the ARM id
+arm_id_annotation:

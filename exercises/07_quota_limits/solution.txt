@@ -1,0 +1,16 @@
+# Exercise 07 -- reference answers
+
+quota_pods: 40
+quota_requests_cpu: 4
+default_cpu_limit: 250m
+quota_command: quota
+
+# Notes
+# - `:quota` shows USED against the hard limit; `<d>` prints both maps, which is
+#   the comparison the API server performs on every create.
+# - `requests.cpu` is written as `4` in the manifest, not as `4000m`; either
+#   passes at the API, k9s shows what the object holds.
+# - `:limits` is the LimitRange view. A container without resources gets
+#   `250m` CPU and `256Mi` memory as a limit, and `50m`/`64Mi` as a request.
+# - Names without a default alias still work: `:resourcequotas` opens the same
+#   view, and `quota` is the kubectl short name.

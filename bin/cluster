@@ -1,0 +1,167 @@
+#!/usr/bin/env bash
+# bin/cluster -- build two AKS-shaped simulated clusters and seed them.
+#
+# kwok is the only provider: it gives a real API server with simulated kubelets,
+# so no container runtime and no privileges are needed, and both "clusters" can
+# be rebuilt in under a minute. Everything lands in one kubeconfig with
+# AKS-style context and user names, so k9s's contexts view looks like the real
+# thing: two clusters, two resource groups, one subscription each.
+set -uo pipefail
+
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+STATE="$ROOT/.dojo"
+KUBECONFIG_FILE="$STATE/kubeconfig"
+ENVS="dev prod"
+export KUBECONFIG="$KUBECONFIG_FILE"
+
+say() { printf '  %s\n' "$*"; }
+die() {
+  printf '  error: %s\n' "$*" >&2
+  exit 1
+}
+
+cluster_name() { printf 'dojo-%s' "$1"; }
+context_name() { printf 'aks-dojo-%s' "$1"; }
+
+require_tools() {
+  local tool missing=()
+  for tool in kwokctl kubectl python3; do
+    command -v "$tool" >/dev/null || missing+=("$tool")
+  done
+  ((${#missing[@]} == 0)) || die "missing: ${missing[*]}
+    kwokctl  https://kwok.sigs.k8s.io/user/install
+    kubectl  https://kubernetes.io/docs/tasks/tools"
+  python3 -c 'import yaml' 2>/dev/null || die "python3-yaml is required"
+}
+
+cluster_exists() { kwokctl get clusters 2>/dev/null | grep -qx "$(cluster_name "$1")"; }
+
+create_cluster() {
+  local env=$1 name tmp
+  name=$(cluster_name "$env")
+  if cluster_exists "$env"; then
+    say "$name already exists"
+  else
+    say "creating $name (simulated kubelet, real API server)"
+    kwokctl create cluster --name "$name" --runtime binary --wait 180s >/dev/null ||
+      die "kwokctl create cluster failed for $name"
+  fi
+  tmp=$(mktemp)
+  kwokctl get kubeconfig --name "$name" >"$tmp" || die "could not read kubeconfig for $name"
+  python3 "$ROOT/bin/kubeconfig-add.py" "$KUBECONFIG_FILE" "$tmp" "$env" ||
+    die "could not merge kubeconfig for $name"
+  rm -f "$tmp"
+  # kwokctl also writes its own context; drop it so `:ctx` shows only the two
+  # AKS-shaped clusters.
+  kubectl config delete-context "kwok-$name" >/dev/null 2>&1
+  kubectl config delete-cluster "kwok-$name" >/dev/null 2>&1
+  kubectl config delete-user "kwok-$name" >/dev/null 2>&1
+}
+
+seed_cluster() {
+  local env=$1 ctx
+  ctx=$(context_name "$env")
+  # kwok starts one unlabelled node; the Azure topology comes from nodes.yaml.
+  kubectl --context "$ctx" delete node node-000000 --ignore-not-found >/dev/null 2>&1
+  say "seeding $ctx"
+  kubectl --context "$ctx" apply -k "$ROOT/cluster/$env" >/dev/null ||
+    die "kubectl apply -k cluster/$env failed"
+  kubectl --context "$ctx" wait --for=condition=Ready nodes --all --timeout=120s >/dev/null 2>&1 ||
+    say "warning: a node is not Ready yet"
+}
+
+start_watcher() {
+  local pidfile="$STATE/simulate.pid"
+  if [[ -r $pidfile ]] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
+    return 0
+  fi
+  nohup "$ROOT/bin/simulate-faults.sh" >/dev/null 2>&1 &
+  printf '%s\n' "$!" >"$pidfile"
+}
+
+stop_watcher() {
+  local pidfile="$STATE/simulate.pid"
+  if [[ -r $pidfile ]]; then
+    kill "$(cat "$pidfile")" 2>/dev/null
+    rm -f "$pidfile"
+  fi
+}
+
+record_seed() {
+  local ctx pod
+  ctx=$(context_name dev)
+  pod=$(kubectl --context "$ctx" -n shop get pods -l app=frontend \
+    -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+  mkdir -p "$STATE"
+  printf '%s\n' "$pod" >"$STATE/seed-dev-frontend"
+}
+
+cmd_up() {
+  require_tools
+  mkdir -p "$STATE"
+  : >"$KUBECONFIG_FILE"
+  local env
+  for env in $ENVS; do
+    create_cluster "$env"
+  done
+  for env in $ENVS; do
+    seed_cluster "$env"
+  done
+  "$ROOT/bin/simulate-faults.sh" --once
+  start_watcher
+  record_seed
+  kubectl config use-context "$(context_name dev)" >/dev/null
+  printf '\n'
+  kubectl config get-contexts
+  printf '\n'
+  say "kubeconfig: .dojo/kubeconfig"
+  say "next:       make tui      (k9s with this repo's config)"
+  printf '\n'
+}
+
+cmd_status() {
+  require_tools
+  local env ctx
+  for env in $ENVS; do
+    ctx=$(context_name "$env")
+    printf '\n  %s\n' "$ctx"
+    if ! cluster_exists "$env"; then
+      printf '    not created\n'
+      continue
+    fi
+    printf '    nodes: %s  pods: %s  deployments: %s\n' \
+      "$(kubectl --context "$ctx" get nodes --no-headers 2>/dev/null | wc -l)" \
+      "$(kubectl --context "$ctx" get pods -A --no-headers 2>/dev/null | wc -l)" \
+      "$(kubectl --context "$ctx" get deploy -A --no-headers 2>/dev/null | wc -l)"
+    kubectl --context "$ctx" get pods -A --no-headers 2>/dev/null |
+      awk '{print $4}' | sort | uniq -c | awk '{printf "    %-20s %s\n", $2, $1}'
+  done
+  printf '\n'
+}
+
+cmd_down() {
+  require_tools
+  stop_watcher
+  local env
+  for env in $ENVS; do
+    if cluster_exists "$env"; then
+      say "deleting $(cluster_name "$env")"
+      kwokctl delete cluster --name "$(cluster_name "$env")" >/dev/null 2>&1
+    fi
+  done
+  rm -f "$KUBECONFIG_FILE" "$STATE/seed-dev-frontend"
+}
+
+case "${1:-}" in
+up) cmd_up ;;
+down) cmd_down ;;
+reset)
+  cmd_down
+  cmd_up
+  ;;
+status) cmd_status ;;
+*)
+  printf 'usage: cluster {up|down|reset|status}\n' >&2
+  exit 2
+  ;;
+esac

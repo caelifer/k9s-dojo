@@ -1,0 +1,17 @@
+# Exercise 08 -- nodes and agent pools
+# Fill in every value after the colon. Leave the key names alone.
+
+# Node count in aks-dojo-dev
+dev_node_count:
+
+# Instance type of the user-pool node
+userpool_instance_type:
+
+# Zone of the system-pool node
+systempool_zone:
+
+# Taint key on the system pool
+systempool_taint_key:
+
+# Region label shared by both nodes
+region:

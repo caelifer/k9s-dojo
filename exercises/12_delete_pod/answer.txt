@@ -1,0 +1,8 @@
+# Exercise 12 -- delete a pod
+# Fill in every value after the colon. Leave the key names alone.
+
+# The key that deletes the selected resource
+delete_key:
+
+# What kind of object owns the replacement pod (pod -> ? -> deployment)
+owner_kind:

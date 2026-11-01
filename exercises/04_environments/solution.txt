@@ -1,0 +1,14 @@
+# Exercise 04 -- reference answers
+
+dev_frontend_replicas: 3
+prod_frontend_replicas: 5
+prod_only_namespace: analytics
+dev_canary_image: nginx:1.28-alpine
+
+# Notes
+# - `<enter>` on a Deployment lists its pods; `<shift-j>` on a pod jumps to the
+#   ReplicaSet that owns it, and another `<shift-j>` reaches the Deployment.
+# - `:deploy` with no namespace set uses the namespace k9s remembered for that
+#   context. `<w>` changes it; `0` returns to all namespaces.
+# - Comparing two clusters means switching context, not opening a second
+#   terminal: `:ctx` keeps both clusters in one process.

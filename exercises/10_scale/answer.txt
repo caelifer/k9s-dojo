@@ -1,0 +1,11 @@
+# Exercise 10 -- scale by editing
+# Fill in every value after the colon. Leave the key names alone.
+
+# The key that opens the object in your editor
+edit_key:
+
+# Replicas after your edit (the number, not the READY column)
+replicas_after:
+
+# Which cluster did you change? (dev or prod)
+cluster_edited:

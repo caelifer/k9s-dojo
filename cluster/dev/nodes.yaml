@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: Node
+metadata:
+  name: aks-systempool-30000000-vmss000000
+  annotations:
+    kwok.x-k8s.io/node: fake
+    node.alpha.kubernetes.io/ttl: "0"
+    aks.azure.com/arm-id: /subscriptions/8f2c1d34-0000-4b2a-9c1e-000000000001/resourceGroups/MC_rg-dojo-dev-weu_aks-dojo-dev_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-systempool-vmss
+  labels:
+    agentpool: systempool
+    kubernetes.azure.com/agentpool: systempool
+    kubernetes.azure.com/cluster: MC_rg-dojo-dev-weu_aks-dojo-dev_westeurope
+    kubernetes.azure.com/os-sku: Linux
+    kubernetes.azure.com/role: agent
+    kubernetes.io/arch: amd64
+    kubernetes.io/hostname: aks-systempool-30000000-vmss000000
+    kubernetes.io/os: linux
+    node.kubernetes.io/instance-type: Standard_D2s_v5
+    topology.kubernetes.io/region: westeurope
+    topology.kubernetes.io/zone: "1"
+spec:
+  taints:
+    - key: CriticalAddonsOnly
+      effect: NoSchedule
+status:
+  capacity:
+    cpu: "2"
+    memory: 8Gi
+    pods: "110"
+  allocatable:
+    cpu: "2"
+    memory: 8Gi
+    pods: "110"
+---
+apiVersion: v1
+kind: Node
+metadata:
+  name: aks-userpool-30000001-vmss000001
+  annotations:
+    kwok.x-k8s.io/node: fake
+    node.alpha.kubernetes.io/ttl: "0"
+    aks.azure.com/arm-id: /subscriptions/8f2c1d34-0000-4b2a-9c1e-000000000001/resourceGroups/MC_rg-dojo-dev-weu_aks-dojo-dev_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-userpool-vmss
+  labels:
+    agentpool: userpool
+    kubernetes.azure.com/agentpool: userpool
+    kubernetes.azure.com/cluster: MC_rg-dojo-dev-weu_aks-dojo-dev_westeurope
+    kubernetes.azure.com/os-sku: Linux
+    kubernetes.azure.com/role: agent
+    kubernetes.io/arch: amd64
+    kubernetes.io/hostname: aks-userpool-30000001-vmss000001
+    kubernetes.io/os: linux
+    node.kubernetes.io/instance-type: Standard_D4s_v5
+    topology.kubernetes.io/region: westeurope
+    topology.kubernetes.io/zone: "1"
+spec: {}
+status:
+  capacity:
+    cpu: "4"
+    memory: 16Gi
+    pods: "110"
+  allocatable:
+    cpu: "4"
+    memory: 16Gi
+    pods: "110"

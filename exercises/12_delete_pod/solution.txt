@@ -1,0 +1,13 @@
+# Exercise 12 -- reference answers
+
+delete_key: ctrl-d
+owner_kind: ReplicaSet
+
+# Notes
+# - `<ctrl-d>` deletes; `<ctrl-k>` kills with zero grace period (only useful
+#   when a pod refuses to terminate).
+# - The replacement pod is created by the ReplicaSet, not by the Deployment:
+#   pod -> ReplicaSet -> Deployment is the ownership chain `<shift-j>` shows.
+# - Deleting the *Deployment* stops the replacements. Deleting a pod only shifts
+#   the name.
+# - `kubectl delete pod <name> -n shop --context aks-dojo-dev` is the same call.

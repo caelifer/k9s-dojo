@@ -1,0 +1,17 @@
+# Exercise 06 -- reference answers
+
+checkout_api_status: ImagePullBackOff
+worker_status: CrashLoopBackOff
+worker_restarts: 6
+batch_renderer_status: Pending
+batch_renderer_memory: 32Gi
+
+# Notes
+# - `checkout-api` pulls `ghcr.io/k9s-dojo/checkout-api:1.4.2`, a tag that does
+#   not exist. `<d>` shows the Failed event: "manifest unknown".
+# - `worker` runs `sh -c 'echo ...; exit 1'`, so the kubelet restarts it with
+#   exponential backoff; RESTARTS climbs and STATUS sits in CrashLoopBackOff.
+# - `batch-renderer` asks for 32Gi of memory. No node has it, so the pod stays
+#   Pending; `<d>` shows "Insufficient memory" under events.
+# - `<p>` on the worker is the interesting one on a real cluster: previous
+#   container logs are exactly what you read for a crash loop.

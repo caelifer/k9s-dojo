@@ -1,0 +1,14 @@
+# Exercise 10 -- reference answers
+
+edit_key: e
+replicas_after: 7
+cluster_edited: prod
+
+# Notes
+# - `<e>` uses `$EDITOR` (or k9s's configured editor). On exit k9s shows a diff
+#   and asks before applying, so an accidental keystroke cannot silently change
+#   a production deployment.
+# - `kubectl scale deploy/frontend --replicas=7 -n shop --context aks-dojo-prod`
+#   does the same thing; `<e>` is the general form and also covers fields that
+#   `scale` cannot touch.
+# - After the edit, READY shows 7/7 once the ReplicaSet has created the pods.
