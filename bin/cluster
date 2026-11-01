@@ -29,8 +29,7 @@ require_tools() {
     command -v "$tool" >/dev/null || missing+=("$tool")
   done
   ((${#missing[@]} == 0)) || die "missing: ${missing[*]}
-    kwokctl  https://kwok.sigs.k8s.io/user/install
-    kubectl  https://kubernetes.io/docs/tasks/tools"
+    run 'make deps' (mise installs kwokctl, kubectl and the python deps)"
   python3 -c 'import yaml' 2>/dev/null || die "python3-yaml is required"
 }
 

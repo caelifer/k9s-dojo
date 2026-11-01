@@ -18,17 +18,32 @@ WITH_IMAGES=0
 
 say() { printf '  %s\n' "$*"; }
 
+# Same engine choice as bin/ui: podman unless only docker is available.
+ENGINE=${DOJO_ENGINE:-}
+if [[ -z $ENGINE ]]; then
+  if command -v podman >/dev/null; then ENGINE=podman
+  elif command -v docker >/dev/null; then ENGINE=docker
+  fi
+fi
+
 say "stopping the live UI stack"
-if command -v podman >/dev/null; then
+case $ENGINE in
+podman)
   podman compose -f "$ROOT/ui/compose.yaml" down --volumes >/dev/null 2>&1
   # compose down leaves the network behind on some podman-compose versions
   podman network rm k9s-dojo-ui_default >/dev/null 2>&1
   say "  containers, network and volumes removed"
-else
-  say "  podman not installed, nothing to remove"
-fi
+  ;;
+docker)
+  docker compose -f "$ROOT/ui/compose.yaml" down --volumes >/dev/null 2>&1
+  say "  containers, network and volumes removed"
+  ;;
+*)
+  say "  no container engine installed, nothing to remove"
+  ;;
+esac
 
-if [[ $WITH_IMAGES == 1 ]]; then
+if [[ $WITH_IMAGES == 1 && $ENGINE == podman ]]; then
   say "removing UI images"
   podman rmi -f \
     localhost/k9s-dojo-loader:latest \
@@ -48,7 +63,7 @@ say "stopping the fault watcher and deleting the clusters"
 if [[ -r $STATE/simulate.pid ]]; then
   kill "$(cat "$STATE/simulate.pid")" 2>/dev/null
 fi
-pkill -f "$ROOT/bin/simulate-faults.sh" 2>/dev/null
+command -v pkill >/dev/null && pkill -f "$ROOT/bin/simulate-faults.sh" 2>/dev/null
 if command -v kwokctl >/dev/null; then
   for name in $(kwokctl get clusters 2>/dev/null | grep -E '^(dojo-|k9s-dojo)'); do
     kwokctl delete cluster --name "$name" >/dev/null 2>&1

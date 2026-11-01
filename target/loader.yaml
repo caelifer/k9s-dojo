@@ -26,7 +26,7 @@ spec:
     spec:
       containers:
         - name: loader
-          image: localhost/k9s-dojo-loader:latest
+          image: k9s-dojo-loader:latest
           imagePullPolicy: IfNotPresent
           env:
             - name: OTEL_EXPORTER_OTLP_ENDPOINT

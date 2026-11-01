@@ -15,7 +15,7 @@ receivers:
         - job_name: kube-state-metrics
           scrape_interval: 15s
           static_configs:
-            - targets: ["host.containers.internal:8080"]
+            - targets: ["${env:KSM_TARGET:-host.containers.internal:8080}"]
         - job_name: node-exporter
           scrape_interval: 15s
           static_configs:

@@ -14,27 +14,70 @@ where you build an observability pipeline yourself.
 
 ## Prerequisites
 
-| Tool | Why | Install |
-|---|---|---|
-| k9s | the thing you are learning | `sudo pacman -S k9s` |
-| kubectl | seeding, live checks | `sudo pacman -S kubectl` |
-| kwokctl | builds the two clusters without a container runtime | release binary, see below |
-| python3 + PyYAML | cluster/kubeconfig plumbing | `sudo pacman -S python-yaml` |
+Everything the repository runs on is pinned in `mise.toml` and installed by
+mise — no system packages, no manual release downloads:
 
-kwokctl is a single binary:
+| Tool | Version source | Used for |
+|---|---|---|
+| k9s | `mise.toml` | the TUI you are learning |
+| kubectl | `mise.toml` | seeding, live checks |
+| kwokctl | `mise.toml` | builds both simulated clusters |
+| python 3.12 + PyYAML | `mise.toml` + `requirements.txt` | cluster and kubeconfig plumbing |
+| uv | `mise.toml` | installs the Python dependency |
+| jq | `mise.toml` | JSON in the scripts |
 
 ```sh
-curl -fsSLo /tmp/kwokctl \
-  https://github.com/kubernetes-sigs/kwok/releases/download/v0.8.0/kwokctl-linux-amd64
-install -m755 /tmp/kwokctl ~/.local/bin/kwokctl
+make deps      # mise install + uv pip install -r requirements.txt
 ```
 
-No root, no Docker, no VM. `make setup` is idempotent and `make teardown`
-removes both clusters.
+`make setup` runs `make deps` first, so a fresh clone only needs two host-level
+things that cannot be versioned per project:
+
+| Host tool | Why it stays on the host |
+|---|---|
+| mise | it is the version manager itself |
+| podman (+ podman-compose) | a container runtime with rootless setup, kernel and cgroup integration; `make ui` uses it |
+
+Interactive shells: `eval "$(mise activate bash)"` (or just use `make`, whose
+recipes already run inside `mise exec`).
+
+### Base requirements (any Linux distribution)
+
+Nothing here is tied to a distribution. `make doctor` checks all of this and
+prints what to fix:
+
+| Requirement | Why | Check |
+|---|---|---|
+| kernel with user namespaces | rootless containers for `make ui` | `/proc/sys/user/max_user_namespaces` > 0 |
+| cgroup v2 (recommended) | rootless resource limits | `stat -fc %T /sys/fs/cgroup` = `cgroup2fs` |
+| `/etc/subuid` + `/etc/subgid` for your user | rootless id mapping | `grep ^$(id -un): /etc/subuid` |
+| bash 4+, coreutils, `curl`, `git`, `awk`, `sed`, `grep` | the scripts are bash | `make doctor` |
+| mise | installs k9s, kubectl, kwokctl, python, uv, jq | `mise --version` |
+| a container engine with compose | only `make ui` needs it | `podman compose version` or `docker compose version` |
+
+Install those two host-level pieces however your distribution prefers — the
+repository never invokes a package manager:
+
+```sh
+# Debian/Ubuntu   sudo apt install podman podman-compose
+# Fedora/RHEL     sudo dnf install podman podman-compose
+# Arch            sudo pacman -S podman podman-compose
+# openSUSE        sudo zypper install podman podman-compose
+# Alpine          sudo apk add podman podman-compose
+```
+
+Docker works too: `DOJO_ENGINE=docker make ui` runs the same stack through
+`docker compose`, and `bin/ui` adds `ui/compose.docker.yaml`, which maps the host
+gateway name docker needs for the kube-state-metrics scrape (podman resolves
+`host.containers.internal` on its own).
+
+No root, no VM. `make setup` is idempotent and `make teardown` removes both
+clusters.
 
 ## Quick start
 
 ```sh
+make doctor    # host prerequisites: kernel, userns, ports, toolchain
 make setup     # two clusters, seeded, in about 20 seconds
 make ui        # live Grafana (http://localhost:3000) and Tempo (:3200)
 make tui       # k9s against aks-dojo-dev with this repo's config

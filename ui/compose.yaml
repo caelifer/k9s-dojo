@@ -42,6 +42,11 @@ services:
 
   otel-collector:
     image: docker.io/otel/opentelemetry-collector-contrib:0.115.1
+    environment:
+      # kube-state-metrics runs with host networking; podman exposes the host as
+      # host.containers.internal, and ui/compose.docker.yaml repoints this for
+      # docker, which needs an explicit host-gateway mapping.
+      KSM_TARGET: host.containers.internal:8080
     command: ["--config=/etc/otel/config.yaml"]
     ports:
       - "4317:4317"
@@ -60,7 +65,7 @@ services:
   loader:
     build:
       context: ./loader
-    image: localhost/k9s-dojo-loader:latest
+    image: k9s-dojo-loader:latest
     environment:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       MIMIR_URL: http://mimir:9009/prometheus

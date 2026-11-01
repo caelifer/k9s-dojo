@@ -1,0 +1,9 @@
+# Docker override for the live stack: docker does not resolve
+# host.containers.internal, so kube-state-metrics has to be reached through the
+# host-gateway alias instead. bin/ui adds this file when DOJO_ENGINE=docker.
+services:
+  otel-collector:
+    extra_hosts:
+      - "host.docker.internal=host-gateway"
+    environment:
+      KSM_TARGET: host.docker.internal:8080

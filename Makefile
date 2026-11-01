@@ -1,75 +1,85 @@
-.PHONY: help setup up reset down teardown destroy list next check apply solution edit tui status cluster selftest ui ui-down ui-status target-state target-state-clear
+.PHONY: help doctor deps setup up reset down teardown destroy list next check apply solution edit tui status cluster selftest ui ui-down ui-status target-state target-state-clear
 
 SHELL := /bin/bash
 CTX ?= aks-dojo-dev
 KUBECONFIG := $(CURDIR)/.dojo/kubeconfig
 export KUBECONFIG
 
+# Every recipe runs inside the mise environment, so k9s, kubectl, kwokctl, python
+# and their dependencies come from mise.toml instead of the host package manager.
+RUN := mise exec --
+
 help:
 	@printf '\nk9s-dojo\n\n'
 	@sed -n 's/^\([a-z-]*\):.*##\s*\(.*\)/  make \1\t\2/p' Makefile
 	@printf '\n'
 
-setup: cluster ## build the sample clusters and seed them, then hint the first step
+doctor: ## check host prerequisites (kernel, user namespaces, ports, toolchain)
+	@bin/doctor
+
+deps: ## install the toolchain and python dependencies with mise
+	@$(RUN) mise run install
+
+setup: deps cluster ## install the toolchain, build the clusters, hint the first step
 	@printf '\nNext: make tui    (then: make next)\n\n'
 
-cluster: ## create the sample cluster and apply the sample workloads
-	@bin/cluster up
+cluster: ## create the sample clusters and apply the sample workloads
+	@$(RUN) bin/cluster up
 
 up: cluster ## alias for make cluster
 	@:
 
-reset: ## delete and rebuild the cluster from scratch
-	@bin/cluster reset
+reset: ## delete and rebuild the clusters from scratch
+	@$(RUN) bin/cluster reset
 
 down: reset ## alias for make reset
 	@:
 
 teardown: ## delete the clusters, keep the repository and the live UIs
-	@bin/cluster down
+	@$(RUN) bin/cluster down
 
 destroy: ## stop the UIs, delete the clusters and remove all temporary state
-	@bin/destroy
+	@$(RUN) bin/destroy
 
 selftest: ## run every exercise with its reference answers (mutates the cluster)
-	@bin/selftest
+	@$(RUN) bin/selftest
 
 status: ## show cluster and exercise progress
-	@bin/cluster status
-	@bin/dojo progress
+	@$(RUN) bin/cluster status
+	@$(RUN) bin/dojo progress
 
 list: ## list every exercise and whether it is done
-	@bin/dojo list
+	@$(RUN) bin/dojo list
 
 next: ## show the exercise you should be doing
-	@bin/dojo next
+	@$(RUN) bin/dojo next
 
 check: ## verify the current exercise, or `make check N=04`
-	@bin/dojo check $(N)
+	@$(RUN) bin/dojo check $(N)
 
 apply: ## apply an exercise's manifests, e.g. `make apply N=17`
-	@bin/dojo apply $(N)
+	@$(RUN) bin/dojo apply $(N)
 
 solution: ## print the reference answers, e.g. `make solution N=04`
-	@bin/dojo solution $(N)
+	@$(RUN) bin/dojo solution $(N)
 
 edit: ## open the exercise answer file, e.g. `make edit N=04`
-	@bin/dojo edit $(N)
+	@$(RUN) bin/dojo edit $(N)
 
 target-state: ## build the finished capstone so it can be inspected live
-	@bin/target-state apply
+	@$(RUN) bin/target-state apply
 
 target-state-clear: ## remove the target state again
-	@bin/target-state clear
+	@$(RUN) bin/target-state clear
 
 ui: ## start the live LGTM UIs (Grafana on :3000, Tempo on :3200)
-	@bin/ui up
+	@$(RUN) bin/ui up
 
 ui-down: ## stop the live LGTM UIs
-	@bin/ui down
+	@$(RUN) bin/ui down
 
 ui-status: ## show which live UIs answer
-	@bin/ui status
+	@$(RUN) bin/ui status
 
 tui: ## run k9s against a dojo cluster (make tui CTX=aks-dojo-prod)
-	@K9S_CONFIG_DIR=$(CURDIR)/k9s-config k9s --context $(CTX)
+	@K9S_CONFIG_DIR=$(CURDIR)/k9s-config $(RUN) k9s --context $(CTX)

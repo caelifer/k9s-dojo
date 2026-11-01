@@ -1,0 +1,145 @@
+#!/usr/bin/env bash
+# bin/doctor -- check that this host can run the dojo, without caring which
+# distribution it is.
+#
+# It only looks at things the kernel and the userspace provide: user namespaces,
+# cgroup mode, subordinate id ranges for rootless containers, free ports, and the
+# handful of commands the scripts call. Remediation lines name the generic package
+# rather than a distribution-specific command.
+set -uo pipefail
+
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+FAILS=0
+WARNS=0
+
+ok() { printf '  ok    %s\n' "$*"; }
+warn() {
+  printf '  warn  %s\n' "$*"
+  WARNS=$((WARNS + 1))
+}
+fail() {
+  printf '  FAIL  %s\n' "$*"
+  FAILS=$((FAILS + 1))
+}
+
+printf '\n  k9s-dojo doctor\n\n'
+
+# --- kernel ---------------------------------------------------------------
+printf '  kernel\n'
+kernel=$(uname -r)
+ok "kernel $kernel, $(uname -m)"
+
+if [[ -r /proc/sys/user/max_user_namespaces ]]; then
+  ns=$(cat /proc/sys/user/max_user_namespaces)
+  if ((ns > 0)); then
+    ok "user namespaces enabled (max_user_namespaces=$ns)"
+  else
+    fail "user namespaces disabled: sysctl -w user.max_user_namespaces=28633"
+  fi
+else
+  warn "cannot read /proc/sys/user/max_user_namespaces"
+fi
+
+cgroup_mode=$(stat -fc %T /sys/fs/cgroup 2>/dev/null)
+case $cgroup_mode in
+cgroup2fs) ok "cgroup v2 (unified)" ;;
+tmpfs) warn "cgroup v1 host: rootless limits work, but cgroup v2 is recommended" ;;
+*) warn "unknown cgroup mode: ${cgroup_mode:-none}" ;;
+esac
+
+if grep -qw unprivileged_userns_clone /proc/sys/kernel/unprivileged_userns_clone 2>/dev/null; then
+  clone=$(cat /proc/sys/kernel/unprivileged_userns_clone)
+  [[ $clone == 1 ]] && ok "kernel.unprivileged_userns_clone=1" ||
+    fail "unprivileged user namespaces are off: sysctl -w kernel.unprivileged_userns_clone=1"
+fi
+
+# --- rootless container prerequisites -------------------------------------
+printf '\n  rootless containers (the live UI stack)\n'
+me=$(id -un)
+if grep -q "^$me:" /etc/subuid 2>/dev/null && grep -q "^$me:" /etc/subgid 2>/dev/null; then
+  ok "$me has subordinate uid/gid ranges"
+else
+  warn "no /etc/subuid entry for $me: rootless containers need one (usermod --add-subuids/--add-subgids)"
+fi
+
+engine=""
+if command -v podman >/dev/null; then
+  engine=podman
+  ok "podman $(podman --version 2>/dev/null | awk '{print $3}')"
+  podman compose version >/dev/null 2>&1 && ok "podman compose available" ||
+    warn "podman-compose missing: install the 'podman-compose' package"
+elif command -v docker >/dev/null; then
+  engine=docker
+  ok "docker $(docker --version 2>/dev/null | awk '{print $3}' | tr -d ,)"
+  docker compose version >/dev/null 2>&1 && ok "docker compose available" ||
+    warn "docker compose plugin missing"
+else
+  warn "no podman or docker: 'make ui' needs one, the exercises do not"
+fi
+
+# --- host commands --------------------------------------------------------
+printf '\n  commands\n'
+for cmd in bash curl git awk sed grep; do
+  command -v "$cmd" >/dev/null && ok "$cmd" || fail "$cmd is required"
+done
+command -v pkill >/dev/null && ok pkill || warn "pkill missing (used only as a sweep in make destroy)"
+command -v mise >/dev/null && ok "mise $(mise --version 2>/dev/null | awk '{print $1}')" ||
+  fail "mise is required: https://mise.jdx.dev/getting-started.html"
+
+# --- toolchain from mise.toml --------------------------------------------
+printf '\n  toolchain (mise.toml)\n'
+if command -v mise >/dev/null && [[ -f $ROOT/mise.toml ]]; then
+  missing=0
+  for tool in k9s kubectl kwokctl python3 uv jq; do
+    if [[ -n $(cd "$ROOT" && mise which "$tool" 2>/dev/null) ]]; then
+      ok "$tool"
+    else
+      fail "$tool not installed"
+      missing=1
+    fi
+  done
+  ((missing)) && printf '        fix: make deps\n'
+  if [[ -n $(cd "$ROOT" && mise which python3 2>/dev/null) ]] &&
+    ! (cd "$ROOT" && mise exec -- python3 -c 'import yaml' 2>/dev/null); then
+    fail "PyYAML missing from the mise python"
+    printf '        fix: make deps\n'
+  fi
+fi
+
+# --- ports ----------------------------------------------------------------
+printf '\n  ports\n'
+port_busy() {
+  local port=$1
+  if command -v ss >/dev/null; then
+    ss -ltn "sport = :$port" 2>/dev/null | grep -q LISTEN
+  elif command -v netstat >/dev/null; then
+    netstat -ltn 2>/dev/null | grep -q ":$port "
+  else
+    return 1
+  fi
+}
+free_list=()
+busy_list=()
+for port in 3000 3100 3200 4317 4318 8080 8888 9009 9100; do
+  if port_busy "$port"; then busy_list+=("$port"); else free_list+=("$port"); fi
+done
+[[ ${#free_list[@]} -gt 0 ]] && ok "free: ${free_list[*]}"
+if ((${#busy_list[@]})); then
+  warn "already in use: ${busy_list[*]} (stop whatever holds them before 'make ui')"
+fi
+
+# --- toolchain note -------------------------------------------------------
+printf '\n  disk\n'
+avail=$(df -Pk "$ROOT" | awk 'NR==2 {print int($4 / 1024 / 1024)}')
+if ((avail >= 3)); then
+  ok "${avail} GiB free (the UI stack pulls about 1 GiB of images)"
+else
+  warn "${avail} GiB free: the first 'make ui' pulls about 1 GiB of images"
+fi
+
+printf '\n'
+if ((FAILS)); then
+  printf '  %d problem(s), %d warning(s). Fix the FAIL lines first.\n\n' "$FAILS" "$WARNS"
+  exit 1
+fi
+printf '  ready: %d warning(s), no blockers. Try: make setup && make ui\n\n' "$WARNS"

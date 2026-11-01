@@ -20,11 +20,40 @@ die() {
   exit 1
 }
 
-compose() { podman compose -f "$PROJECT_DIR/compose.yaml" "$@"; }
+# The stack runs on whichever container engine the host provides. Set
+# DOJO_ENGINE=podman|docker to choose explicitly.
+detect_engine() {
+  if [[ -n ${DOJO_ENGINE:-} ]]; then
+    printf '%s' "$DOJO_ENGINE"
+    return
+  fi
+  if command -v podman >/dev/null && podman compose version >/dev/null 2>&1; then
+    printf 'podman'
+  elif command -v docker >/dev/null && docker compose version >/dev/null 2>&1; then
+    printf 'docker'
+  fi
+}
+
+ENGINE=$(detect_engine)
+
+compose() {
+  case $ENGINE in
+  podman) podman compose -f "$PROJECT_DIR/compose.yaml" "$@" ;;
+  docker) docker compose -f "$PROJECT_DIR/compose.yaml" -f "$PROJECT_DIR/compose.docker.yaml" "$@" ;;
+  *) die "no container engine with compose support (podman or docker)" ;;
+  esac
+}
+
+engine_ps() {
+  case $ENGINE in
+  podman) podman ps --format '{{.Names}}' ;;
+  docker) docker ps --format '{{.Names}}' ;;
+  esac
+}
 
 require() {
-  command -v podman >/dev/null || die "podman is required"
-  podman compose version >/dev/null 2>&1 || die "podman-compose is required"
+  [[ -n $ENGINE ]] ||
+    die "no container engine: install podman (or docker) with compose support for 'make ui'"
   [[ -r $KUBECONFIG_FILE ]] || die "no .dojo/kubeconfig; run make setup first"
 }
 
@@ -41,7 +70,7 @@ wait_for() {
 
 cmd_up() {
   require
-  say "starting the live LGTM stack (first run pulls images)"
+  say "starting the live LGTM stack on $ENGINE (first run pulls images)"
   compose up -d || die "podman compose up failed"
   printf '\n'
   wait_for http://127.0.0.1:3000/api/health grafana || true
@@ -84,7 +113,7 @@ cmd_status() {
   )
   local entry name url
   printf '\n'
-  if podman ps --format '{{.Names}}' 2>/dev/null | grep -qx 'k9s-dojo-ui_loader_1'; then
+  if engine_ps 2>/dev/null | grep -qx 'k9s-dojo-ui_loader_1'; then
     printf '  %-20s %s\n' "loader" "up (dojo-loader)"
   else
     printf '  %-20s %s\n' "loader" "down"
