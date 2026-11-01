@@ -84,6 +84,11 @@ cmd_status() {
   )
   local entry name url
   printf '\n'
+  if podman ps --format '{{.Names}}' 2>/dev/null | grep -qx 'k9s-dojo-ui_loader_1'; then
+    printf '  %-20s %s\n' "loader" "up (dojo-loader)"
+  else
+    printf '  %-20s %s\n' "loader" "down"
+  fi
   for entry in "${targets[@]}"; do
     name=${entry%%|*}
     url=${entry#*|}
