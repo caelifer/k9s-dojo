@@ -11,6 +11,8 @@ name: k9s-dojo-ui
 #   make ui-down
 services:
   loki:
+    environment:
+      DOJO_CONFIG_HASH: "${DOJO_CONFIG_HASH:-dev}"
     image: docker.io/grafana/loki:3.2.1
     command: ["-config.file=/etc/loki/config.yaml"]
     ports:
@@ -21,6 +23,8 @@ services:
     restart: unless-stopped
 
   tempo:
+    environment:
+      DOJO_CONFIG_HASH: "${DOJO_CONFIG_HASH:-dev}"
     image: docker.io/grafana/tempo:2.6.1
     command: ["-config.file=/etc/tempo/config.yaml"]
     ports:
@@ -31,6 +35,8 @@ services:
     restart: unless-stopped
 
   mimir:
+    environment:
+      DOJO_CONFIG_HASH: "${DOJO_CONFIG_HASH:-dev}"
     image: docker.io/grafana/mimir:2.14.0
     command: ["-target=all", "-config.file=/etc/mimir/config.yaml"]
     ports:
@@ -48,6 +54,7 @@ services:
       # docker, which needs an explicit host-gateway mapping.
       # the k8s_events receiver tails Events through this rewritten kubeconfig
       KUBECONFIG: /etc/kubeconfig/kubeconfig
+      DOJO_CONFIG_HASH: "${DOJO_CONFIG_HASH:-dev}"
     command: ["--config=/etc/otel/config.yaml"]
     ports:
       - "4317:4317"
@@ -96,6 +103,7 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
       GF_USERS_ALLOW_SIGN_UP: "false"
+      DOJO_CONFIG_HASH: "${DOJO_CONFIG_HASH:-dev}"
     volumes:
       - ./config/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
       - ./config/grafana-dashboard-provider.yaml:/etc/grafana/provisioning/dashboards/provider.yaml:ro

@@ -285,6 +285,10 @@ in Loki under that pod's name), `kube-state-metrics` talks to the same API serve
 series, and three `telemetrygen` containers push synthetic spans, metrics and
 logs through the collector into Tempo, Mimir and Loki.
 
+`make ui` recreates any service whose config under `ui/config/` changed (the
+files are checksummed into an env var), so editing a Loki or Tempo config never
+leaves a stale container behind.
+
 ```sh
 make ui          # start everything (~1 GB of image pulls the first time)
 make ui-status   # which endpoints answer

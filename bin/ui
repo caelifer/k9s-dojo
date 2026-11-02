@@ -36,7 +36,17 @@ detect_engine() {
 
 ENGINE=$(detect_engine)
 
+# Any edit under ui/config must reach the running containers: plain `compose up`
+# does not recreate a service whose bind mount changed, so the checksum travels
+# as an env var and forces a recreate when it moves.
+config_hash() {
+  cat "$PROJECT_DIR"/config/*.yaml "$PROJECT_DIR"/compose.yaml 2>/dev/null |
+    sha256sum | cut -c1-12
+}
+
 compose() {
+  DOJO_CONFIG_HASH=$(config_hash)
+  export DOJO_CONFIG_HASH
   case $ENGINE in
   podman) podman compose -f "$PROJECT_DIR/compose.yaml" "$@" ;;
   docker) docker compose -f "$PROJECT_DIR/compose.yaml" -f "$PROJECT_DIR/compose.docker.yaml" "$@" ;;

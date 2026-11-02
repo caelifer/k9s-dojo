@@ -700,7 +700,7 @@
       "id": 16,
       "type": "logs",
       "title": "Pod warnings",
-      "description": "Recent problem events in the dashboard time range: all pods when Pod = All, the selected pod's events otherwise.",
+      "description": "Recent problem lines in the dashboard time range: Kubernetes Events (FailedScheduling, ImagePull*, CrashLoopBackOff) and application warnings. All pods when Pod = All, the selected pod otherwise. Matches on the line text, so it does not depend on any optional Loki label.",
       "datasource": {
         "type": "loki",
         "uid": "loki"
@@ -714,7 +714,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "{service_name=~\"$pod\", event_kind=\"Pod\"} |~ \"(?i)fail|error|warn|insufficient|untolerated|backoff\"",
+          "expr": "{service_name=~\"$pod\"} |~ \"(?i)fail|error|warn|insufficient|untolerated|backoff|back-off\"",
           "maxLines": 300
         }
       ],
