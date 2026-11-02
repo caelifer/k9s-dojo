@@ -99,6 +99,23 @@ stop_watcher() {
   fi
 }
 
+# The live stack's kubeconfig binds the API server port, which changes whenever
+# the clusters are recreated. Refresh the two consumers if the stack is up.
+refresh_ui_stack() {
+  local names=""
+  if command -v podman >/dev/null; then
+    names=$(podman ps --format '{{.Names}}' 2>/dev/null)
+  elif command -v docker >/dev/null; then
+    names=$(docker ps --format '{{.Names}}' 2>/dev/null)
+  fi
+  case $names in
+  *k9s-dojo-ui_*)
+    "$ROOT/bin/ui" refresh >/dev/null 2>&1 ||
+      say "warning: the live UI stack is running but could not be refreshed; run make ui"
+    ;;
+  esac
+}
+
 record_seed() {
   local ctx pod
   ctx=$(context_name dev)
@@ -122,6 +139,7 @@ cmd_up() {
   "$ROOT/bin/simulate-faults.sh" --once
   start_watcher
   record_seed
+  refresh_ui_stack
   kubectl config use-context "$(context_name dev)" >/dev/null
   printf '\n'
   kubectl config get-contexts

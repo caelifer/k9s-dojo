@@ -6,4 +6,5 @@ services:
     extra_hosts:
       - "host.docker.internal=host-gateway"
     environment:
-      KSM_TARGET: host.docker.internal:8080
+      # only the events receiver needs the host alias under docker
+      KUBECONFIG: /etc/kubeconfig/kubeconfig

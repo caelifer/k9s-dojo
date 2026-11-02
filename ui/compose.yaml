@@ -46,7 +46,6 @@ services:
       # kube-state-metrics runs with host networking; podman exposes the host as
       # host.containers.internal, and ui/compose.docker.yaml repoints this for
       # docker, which needs an explicit host-gateway mapping.
-      KSM_TARGET: host.containers.internal:8080
       # the k8s_events receiver tails Events through this rewritten kubeconfig
       KUBECONFIG: /etc/kubeconfig/kubeconfig
     command: ["--config=/etc/otel/config.yaml"]
@@ -111,15 +110,18 @@ services:
   # kube-state-metrics talks to the dojo API server, which listens on the host's
   # loopback, so this one runs with host networking and keeps the kubeconfig as
   # written. Everything else reaches it as host.containers.internal:8080.
+  # kube-state-metrics talks to the dojo API server through the rewritten
+  # kubeconfig. It runs on the compose network (not host networking) so the same
+  # file works on macOS, where "host" is the VM and not the machine running the
+  # clusters.
   kube-state-metrics:
     image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.13.0
-    network_mode: host
     command:
       - --kubeconfig=/kubeconfig
       - --port=8080
       - --resources=pods,nodes,deployments,statefulsets,daemonsets
     volumes:
-      - ../.dojo/kubeconfig:/kubeconfig:ro
+      - ./.kubeconfig:/kubeconfig:ro
     restart: unless-stopped
 
   node-exporter:

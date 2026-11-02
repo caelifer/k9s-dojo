@@ -77,6 +77,34 @@ else
   warn "no podman or docker: 'make ui' needs one, the exercises do not"
 fi
 
+# --- the live stack's view of the API server ------------------------------
+if [[ -d $ROOT/ui ]]; then
+  printf '\n  live stack -> API server\n'
+  container_cfg="$ROOT/ui/.kubeconfig"
+  host_cfg="$ROOT/.dojo/kubeconfig"
+  if [[ -r $container_cfg && -r $host_cfg ]]; then
+    container_server=$(grep -m1 'server:' "$container_cfg" | awk '{print $2}')
+    host_server=$(grep -m1 'server:' "$host_cfg" | awk '{print $2}')
+    container_port=${container_server##*:}
+    host_port=${host_server##*:}
+    if [[ $container_port == "$host_port" ]]; then
+      ok "container kubeconfig matches the current API server ($container_port)"
+    else
+      warn "container kubeconfig points at port $container_port, cluster is on $host_port"
+      printf '        fix: make ui   (or: bin/ui refresh)\n'
+    fi
+  else
+    warn "no container kubeconfig yet (created by make ui)"
+  fi
+  if [[ $(uname -s) == Darwin ]]; then
+    printf '  note  macOS: the clusters run on the Mac, the containers in a VM, so the\n'
+    printf '        stack reaches the API through host.containers.internal. If dashboard\n'
+    printf '        panels stay empty, check that path from inside the VM:\n'
+    printf '          podman machine ssh -- curl -sk https://host.containers.internal:%s/livez\n' \
+      "${host_port:-<api-port>}"
+  fi
+fi
+
 # --- host commands --------------------------------------------------------
 printf '\n  commands\n'
 for cmd in bash curl git awk sed grep; do

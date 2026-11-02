@@ -66,6 +66,13 @@ repository never invokes a package manager:
 # Alpine          sudo apk add podman podman-compose
 ```
 
+On macOS the clusters run on the Mac while the containers run inside the engine's
+VM, so the stack reaches the API server through `host.containers.internal`.
+`make cluster` / `make reset` refresh the two containers that hold that
+kubeconfig; `make doctor` reports a stale port. If panels stay empty, the VM is
+not forwarding to the Mac's loopback — `make doctor` prints the `podman machine
+ssh -- curl …` probe to confirm.
+
 Docker works too: `DOJO_ENGINE=docker make ui` runs the same stack through
 `docker compose`, and `bin/ui` adds `ui/compose.docker.yaml`, which maps the host
 gateway name docker needs for the kube-state-metrics scrape (podman resolves

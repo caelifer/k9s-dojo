@@ -97,6 +97,19 @@ cmd_up() {
   printf '\n'
 }
 
+# Rebuild the container kubeconfig and restart the two components that read it.
+# The dojo API servers change port whenever the clusters are recreated, so the
+# stack has to be refreshed after `make cluster` / `make reset`.
+cmd_refresh() {
+  require
+  python3 "$ROOT/bin/kubeconfig-ui.py" "$KUBECONFIG_FILE" "$PROJECT_DIR/.kubeconfig" \
+    aks-dojo-dev host.containers.internal ||
+    die "could not build the container kubeconfig"
+  compose up -d --force-recreate kube-state-metrics otel-collector >/dev/null 2>&1 ||
+    die "could not restart kube-state-metrics and the collector"
+  say "refreshed kube-state-metrics and the collector against the current API server"
+}
+
 cmd_down() {
   require
   say "stopping the live LGTM stack"
@@ -112,11 +125,17 @@ cmd_status() {
     "mimir|http://127.0.0.1:9009/ready"
     "loki|http://127.0.0.1:3100/ready"
     "collector|http://127.0.0.1:8888/metrics"
-    "kube-state-metrics|http://127.0.0.1:8080/metrics"
     "node-exporter|http://127.0.0.1:9100/metrics"
   )
   local entry name url
   printf '\n'
+  # kube-state-metrics has no published port: it is reached over the compose
+  # network, so report the container state instead of guessing a URL
+  if engine_ps 2>/dev/null | grep -qx 'k9s-dojo-ui_kube-state-metrics_1'; then
+    printf '  %-20s %s\n' "kube-state-metrics" "up"
+  else
+    printf '  %-20s %s\n' "kube-state-metrics" "down"
+  fi
   if engine_ps 2>/dev/null | grep -qx 'k9s-dojo-ui_loader_1'; then
     printf '  %-20s %s\n' "loader" "up (dojo-loader)"
   else
@@ -136,10 +155,11 @@ cmd_status() {
 
 case "${1:-}" in
 up) cmd_up ;;
+refresh) cmd_refresh ;;
 down) cmd_down ;;
 status) cmd_status ;;
 *)
-  printf 'usage: ui {up|down|status}\n' >&2
+  printf 'usage: ui {up|refresh|down|status}\n' >&2
   exit 2
   ;;
 esac
