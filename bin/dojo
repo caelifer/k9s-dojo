@@ -16,7 +16,12 @@ exercise_dirs() { ls -d "$ROOT"/exercises/[0-9]*/ 2>/dev/null | sort; }
 ex_id() { basename "${1%/}" | cut -d_ -f1; }
 ex_topic() { basename "${1%/}" | cut -d_ -f2- | tr '_' ' '; }
 
-done_ids() { [[ -r $PROGRESS ]] && sed -n 's/[[:space:]]//gp' "$PROGRESS"; }
+# Trim each line and drop blanks. (An earlier version printed only lines that
+# contained whitespace, which is why nothing ever counted as complete.)
+done_ids() {
+  [[ -r $PROGRESS ]] || return 0
+  sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$PROGRESS" | grep -v '^$'
+}
 
 is_done() { done_ids | grep -qx "$1"; }
 

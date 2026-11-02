@@ -1,14 +1,6 @@
-# Exercise 01 -- orientation
-# Fill in every value after the colon. Leave the key names alone.
 
-# How many namespaces hold the dojo workloads?
-dojo_namespaces:
+dojo_namespaces: 3
+ledger_namespace: payments
+contexts_command: ctx
+warp_key: w
 
-# Which namespace holds the ledger deployment?
-ledger_namespace:
-
-# Command-mode entry (without the colon) that lists kubeconfig contexts?
-contexts_command:
-
-# The single key that warps to another namespace from a resource view?
-warp_key:

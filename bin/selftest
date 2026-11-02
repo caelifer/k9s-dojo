@@ -84,6 +84,19 @@ rm -f "$STATE/completed"
 "$ROOT/bin/dojo" check all
 rc=$?
 
+# the runner must actually record progress, or `make next` sends people back to
+# exercise 01 even though their checks passed
+if ((rc == 0)); then
+  done_count=$("$ROOT/bin/dojo" list | grep -c 'done')
+  if [[ $done_count == "$(ls -d "$ROOT"/exercises/[0-9]*/ | wc -l)" ]]; then
+    printf '  progress recorded: %s exercises complete\n' "$done_count"
+  else
+    printf '  FAIL  progress recorded only %s of %s exercises\n' \
+      "$done_count" "$(ls -d "$ROOT"/exercises/[0-9]*/ | wc -l)" >&2
+    rc=1
+  fi
+fi
+
 # the capstone namespace and its volumes have to go back to a clean state, and
 # the pod-level edit from exercise 11 has to be rolled back by its ReplicaSet
 kubectl --context "$CTX_DEV" delete namespace pipeline --wait=true --timeout=60s >/dev/null 2>&1
