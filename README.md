@@ -27,15 +27,16 @@ mise — no system packages, no manual release downloads:
 | jq | `mise.toml` | JSON in the scripts |
 
 ```sh
-make deps      # mise install + uv pip install -r requirements.txt
+make bootstrap # one-time per checkout: mise install + uv pip install -r requirements.txt
+make deps      # alias for make bootstrap
 ```
 
-`make setup` runs `make deps` first, so a fresh clone only needs two host-level
-things that cannot be versioned per project:
+`make setup` runs `make bootstrap` first, so a fresh clone only needs two
+host-level things that cannot be versioned per project:
 
 | Host tool | Why it stays on the host |
 |---|---|
-| mise | it is the version manager itself |
+| mise | it is the version manager itself; `make bootstrap MISE_INSTALL=1` installs it user-locally (`~/.local/bin`, no sudo) if it is missing |
 | podman (+ podman-compose) | a container runtime with rootless setup, kernel and cgroup integration; `make ui` uses it |
 
 Interactive shells: `eval "$(mise activate bash)"` (or just use `make`, whose
@@ -84,6 +85,7 @@ clusters.
 ## Quick start
 
 ```sh
+make bootstrap # fresh clone only: install the pinned toolchain via mise
 make doctor    # host prerequisites: kernel, userns, ports, toolchain
 make setup     # two clusters, seeded, in about 20 seconds
 make ui        # live Grafana (http://localhost:3000) and Tempo (:3200)
@@ -346,6 +348,8 @@ make tui            # K9S_CONFIG_DIR=$PWD/k9s-config k9s --context aks-dojo-dev
 | Symptom | Cause |
 |---|---|
 | `make check` says "no cluster reachable" | `make setup` never ran, or `make reset` is still going |
+| `make bootstrap` says "mise is not installed" | install it user-locally: `make bootstrap MISE_INSTALL=1` (or `curl -fsSL https://mise.run \| sh`) |
+| `kwokctl: unknown command` after a manual install | something else owns the `kwokctl` shim; `make bootstrap` re-checks that it is `kwokctl version`, not `kwok version` |
 | `:ctx` shows `kwok-dojo-…` contexts | kubeconfig merged before the cleanup ran; `make reset` |
 | broken workloads look Healthy | the fault watcher died: `make reset` |
 | `no such exercise: 5` | ids are two digits: `make check N=05` |

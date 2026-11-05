@@ -1,4 +1,4 @@
-.PHONY: help doctor deps setup up reset down teardown destroy list next check apply solution edit tui status cluster selftest ui ui-down ui-status target-state target-state-clear
+.PHONY: help doctor bootstrap deps setup up reset down teardown destroy list next check apply solution edit tui status cluster selftest ui ui-down ui-status target-state target-state-clear
 
 SHELL := /bin/bash
 CTX ?= aks-dojo-dev
@@ -17,10 +17,13 @@ help:
 doctor: ## check host prerequisites (kernel, user namespaces, ports, toolchain)
 	@bin/doctor
 
-deps: ## install the toolchain and python dependencies with mise
-	@$(RUN) mise run install
+bootstrap: ## one-time per checkout: trust mise.toml, install the pinned toolchain
+	@bin/bootstrap
 
-setup: deps cluster ## install the toolchain, build the clusters, hint the first step
+deps: bootstrap ## alias for make bootstrap
+	@:
+
+setup: bootstrap cluster ## install the toolchain, build the clusters, hint the first step
 	@printf '\nNext: make tui    (then: make next)\n\n'
 
 cluster: ## create the sample clusters and apply the sample workloads

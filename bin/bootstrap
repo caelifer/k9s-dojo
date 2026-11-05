@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# bin/bootstrap -- prepare the mise environment for a fresh checkout.
+#
+# Everything this repository runs on is pinned in mise.toml, so the only host
+# tool it cannot install for itself is mise. This script finds it (or installs
+# it user-locally when asked), trusts the project config, installs the
+# toolchain, and then proves each pinned tool actually runs.
+#
+#   make bootstrap                 # mise must already be on PATH
+#   make bootstrap MISE_INSTALL=1  # install mise into ~/.local/bin first
+set -uo pipefail
+
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+cd "$ROOT" || exit 1
+
+ok() { printf '  ok    %s\n' "$*"; }
+warn() { printf '  warn  %s\n' "$*"; }
+die() {
+  printf '  FAIL  %s\n' "$*" >&2
+  exit 1
+}
+
+printf '\n  k9s-dojo bootstrap\n\n'
+
+# --- mise itself ----------------------------------------------------------
+# Prefer PATH; fall back to the locations the installers use, because a
+# non-interactive shell often has not sourced ~/.bashrc's PATH update yet.
+find_mise() {
+  local c
+  if c=$(command -v mise 2>/dev/null); then
+    echo "$c"
+    return 0
+  fi
+  for c in "$HOME/.local/bin/mise" /opt/homebrew/bin/mise /usr/local/bin/mise; do
+    [[ -x $c ]] && {
+      echo "$c"
+      return 0
+    }
+  done
+  return 1
+}
+
+if ! MISE=$(find_mise); then
+  if [[ ${MISE_INSTALL:-0} == 1 ]]; then
+    printf '  ...   installing mise into ~/.local/bin\n'
+    curl -fsSL https://mise.run | sh || die "the mise installer failed"
+    export PATH="$HOME/.local/bin:$PATH"
+    MISE=$(find_mise) || die "mise was installed but is not executable; add ~/.local/bin to PATH"
+  else
+    cat >&2 <<'EOS'
+
+  FAIL  mise is not installed, and it is the one host-level tool this
+        repository cannot install for itself. Install it user-locally:
+
+          curl -fsSL https://mise.run | sh
+          export PATH="$HOME/.local/bin:$PATH"
+
+        or let this target do it:
+
+          make bootstrap MISE_INSTALL=1
+
+EOS
+    exit 1
+  fi
+fi
+ok "mise $("$MISE" --version | awk '{print $1}') ($MISE)"
+
+# --- project config + toolchain -------------------------------------------
+# Explicit trust is a no-op when the file is already trusted; it is required
+# when mise runs in paranoid mode, where no command trusts config on its own.
+"$MISE" trust "$ROOT/mise.toml" >/dev/null 2>&1 ||
+  warn "could not mark mise.toml trusted; mise may refuse to load it"
+
+"$MISE" install || die "mise install failed"
+ok "toolchain installed from mise.toml"
+
+"$MISE" exec -- uv pip install --system -r requirements.txt || die "uv pip install failed"
+ok "python dependencies from requirements.txt"
+
+# --- prove the toolchain, not just its shims ------------------------------
+# kwokctl gets its own check: the aqua registry entry of that name ships the
+# `kwok` controller, so a wrong backend prints "kwok version" and every cluster
+# command then fails with unknown flags.
+check() { # <label> <command...>
+  local label=$1
+  shift
+  if "$MISE" exec -- "$@" >/dev/null 2>&1; then
+    ok "$label"
+  else
+    die "$label does not run: $*"
+  fi
+}
+
+check "k9s" k9s version
+check "kubectl" kubectl version --client
+check "uv" uv --version
+check "jq" jq --version
+check "python 3.12 + PyYAML" python3 -c 'import sys, yaml; assert sys.version_info[:2] == (3, 12)'
+
+if out=$("$MISE" exec -- kwokctl --version 2>&1) && [[ $out == "kwokctl version"* ]]; then
+  ok "kwokctl ($out)"
+else
+  die "kwokctl resolves to the wrong binary (${out:-no output}); the http:kwokctl pin in mise.toml was not applied"
+fi
+
+printf '\n  ready. Next: make setup    (or: make doctor)\n\n'
